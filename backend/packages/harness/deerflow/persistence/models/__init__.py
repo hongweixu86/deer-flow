@@ -12,6 +12,12 @@ The actual ORM classes have moved to entity-specific subpackages:
 ``RunEventRow`` remains in ``deerflow.persistence.models.run_event`` because
 its storage implementation lives in ``deerflow.runtime.events.store.db`` and
 there is no matching entity directory.
+
+The schedule tables (``Schedule``, ``ScheduleSubscription``, ``ScheduleRun``)
+also live under ``deerflow.persistence.models`` for now; they have no
+matching entity directory because their ownership is shared between the
+scheduler engine, executor, REST router, and agent tools, and the
+implementation has not yet been promoted to its own subpackage.
 """
 
 from deerflow.persistence.channel_connections.model import (
@@ -22,6 +28,11 @@ from deerflow.persistence.channel_connections.model import (
 )
 from deerflow.persistence.feedback.model import FeedbackRow
 from deerflow.persistence.models.run_event import RunEventRow
+from deerflow.persistence.models.schedule import (
+    Schedule,
+    ScheduleRun,
+    ScheduleSubscription,
+)
 from deerflow.persistence.run.model import RunRow
 from deerflow.persistence.thread_meta.model import ThreadMetaRow
 from deerflow.persistence.user.model import UserRow
@@ -34,6 +45,9 @@ __all__ = [
     "FeedbackRow",
     "RunEventRow",
     "RunRow",
+    "Schedule",
+    "ScheduleRun",
+    "ScheduleSubscription",
     "ThreadMetaRow",
     "UserRow",
 ]
