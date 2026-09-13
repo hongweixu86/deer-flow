@@ -718,3 +718,163 @@ See `docs/` directory for detailed documentation:
 - [PATH_EXAMPLES.md](docs/PATH_EXAMPLES.md) - Path types and usage
 - [summarization.md](docs/summarization.md) - Context summarization
 - [plan_mode_usage.md](docs/plan_mode_usage.md) - Plan mode with TodoList
+
+## Scheduling
+
+The scheduling subsystem lets a user (or an agent flow on the user's
+behalf) declare a recurring or one-shot task — "summarise yesterday's
+PRs every weekday at 9am Asia/Shanghai" — and have the agent run it
+on a cron, dispatch the result into langgraph, and push the outcome
+back to the chat channel that owns the schedule (Feishu in MVP).
+
+### Architecture at a glance
+
+```
++-------------------+     +-------------------+     +-------------------+
+|  schedule_tool    |     |  /api/schedules   |     |   chat (Feishu)   |
+|  (agent flow)     |     |  (REST router)    |     |   / CLI / web UI  |
++---------+---------+     +---------+---------+     +---------+---------+
+          |                         |                         |
+          v                         v                         v
++----------------------------------------------------------------------+
+|                   ScheduleService  (business rules)                  |
++--------------------------------+-------------------------------------+
+                                 |
+                                 v
++----------------------------------------------------------------------+
+|  ScheduleRepository  (SQLAlchemy -- schedules / runs / subscriptions)|
++--------+--------------------------+-----------------------------------+
+         |                          |
+         v                          v
++----------------+        +----------------------+        +----------------+
+| SchedulerEngine|        |   ScheduleExecutor   |        |   MessageBus   |
+| (APScheduler + |------->|  (run + push + retry)|------->|  (chat push)   |
+|  leader lock)  |        |                      |        |                |
++----------------+        +----------------------+        +----------------+
+```
+
+The four moving parts:
+
+- **ScheduleRepository** (`deerflow.persistence.schedule_repo`) — the
+  single persistence facade. Owns the `schedules`,
+  `schedule_subscriptions`, and `schedule_runs` tables.
+- **SchedulerEngine** (`app.scheduling.scheduler`) — APScheduler
+  + `SQLAlchemyJobStore`. Calls
+  `ScheduleExecutor.enqueue(schedule_id)` at every fire. Holds a
+  startup-time advisory lock so multi-replica deployments don't
+  double-fire.
+- **ScheduleExecutor** (`app.scheduling.executor`) — the unit of
+  work for a single fire. Creates the `ScheduleRun` row, calls
+  `RunManager.create_or_reject(...)`, then publishes the formatted
+  push via `MessageBus.publish_outbound`.
+- **ScheduleService** (`app.scheduling.service`) — the business
+  facade used by the REST router. Mediates between the repo, the
+  engine, and the per-user limits.
+
+### Modules
+
+| File                                            | Role                                      |
+| ----------------------------------------------- | ----------------------------------------- |
+| `app/scheduling/service.py`                     | Business facade (create / pause / resume) |
+| `app/scheduling/scheduler.py`                    | APScheduler engine + leader lock          |
+| `app/scheduling/executor.py`                    | Per-fire dispatch + push + retry          |
+| `app/scheduling/lifespan.py`                    | Wires engine + service into app state     |
+| `app/scheduling/leader.py`                      | Advisory lock (Postgres + SQLite)         |
+| `app/scheduling/formatting.py`                  | Pure push-message formatter               |
+| `app/scheduling/audit.py`                       | `middleware:schedule` log lines           |
+| `app/scheduling/observability.py`               | `metric:schedule` log lines               |
+| `app/gateway/routers/schedules.py`               | REST surface (`/api/schedules/*`)         |
+| `deerflow/persistence/models/schedule.py`       | ORM models (Schedule / Run / Subscription)|
+| `deerflow/persistence/schedule_repo.py`         | SQLAlchemy repository                     |
+| `deerflow/tools/builtins/schedule_tool.py`      | Agent tool entry point                    |
+| `deerflow/config/scheduling.py`                 | `SchedulingConfig` + `LimitsConfig`       |
+
+### Configuration
+
+Two startup-only config blocks under `config.yaml`:
+
+- `scheduling` — `enabled`, `timezone`, `executor.*`, `retry.*`,
+  `push.*`, `apscheduler.*`. See `deerflow/config/scheduling.py`.
+- `limits.max_active_schedules_per_user` — per-user cap enforced by
+  the REST router on create.
+
+Toggling `scheduling.enabled: false` keeps `/api/schedules/*` callable
+in shape but returns 503 with `scheduling_disabled` at runtime — the
+intended kill switch for an embedder.
+
+### REST surface
+
+Mounted at `/api/schedules` (see `app/gateway/routers/schedules.py`):
+
+- `GET    /api/schedules`                  — list visible schedules
+- `POST   /api/schedules`                  — create
+- `GET    /api/schedules/{id}`             — read (404 on not-visible)
+- `PATCH  /api/schedules/{id}`             — update (owner only)
+- `DELETE /api/schedules/{id}`             — soft delete (owner only)
+- `POST   /api/schedules/{id}/pause`       — pause (owner only)
+- `POST   /api/schedules/{id}/resume`      — resume (owner only)
+- `POST   /api/schedules/{id}/subscribe`   — add subscriber
+- `POST   /api/schedules/{id}/unsubscribe` — drop subscriber
+- `GET    /api/schedules/{id}/runs`        — run history (visibility-filtered)
+
+The authz matrix is the one in spec §18.2: mutations are owner-only;
+reads are 404-on-not-visible (never 403); subscribe / unsubscribe
+are any-logged-in-user. `target.connection_id` cross-user is 403 at
+create time.
+
+### Agent tool gating
+
+The `schedule_*` agent tools (`deerflow/tools/builtins/schedule_tool.py`)
+are gated on `scheduling.enabled: true` — when the config is off,
+the tools are not registered, so a chat-only flow cannot schedule
+tasks even if a user asks. The agent tool path uses the same
+`ScheduleService` as the REST router, so the authz matrix and the
+per-user limits are enforced identically.
+
+### Integration concerns (spec §18, one-line each)
+
+- **18.1 HA**: single-instance default; multi-replica deployments
+  rely on the startup-time advisory lock to avoid double-fires. Set
+  `scheduling.executor.persist_queue=true` to switch to
+  `SELECT ... FOR UPDATE SKIP LOCKED` on `schedule_runs.status=queued`.
+- **18.2 Multi-tenancy / authz**: owner-only mutations; reads are
+  404-on-not-visible; subscribers see only their own runs. The
+  per-thread sandbox and token usage are billed to
+  `subscriber_user_id` (not the schedule owner) so the right tenant
+  pays.
+- **18.3 Observability**: every fire emits a `middleware:schedule`
+  audit line (`schedule.fire` / `schedule.run_succeeded` /
+  `schedule.run_failed` / `schedule.push_failure`) and a
+  `metric:schedule` metrics line. Wire `schedule_fires_total` and
+  `schedule_push_failures_total` into existing dashboards.
+- **18.4 Rollout & kill switches**: `scheduling.enabled: false` to
+  disable the whole subsystem; `User.max_active_schedules = 0` to
+  per-user off-board; the Alembic migration is reversible with
+  `alembic downgrade -1`.
+- **18.5 Internal systems**: schedule ownership is keyed on
+  `get_effective_user_id()`, so any SSO integration just works. The
+  `middleware:schedule` audit events plug into the same SIEM
+  collectors that already read `middleware:skill_activation`.
+  `target_json` never carries the channel secret — the secret lives
+  in the channel's existing credential store, so a stolen schedule
+  row is not enough to push.
+
+### Web UI stub
+
+`frontend/src/app/workspace/schedules/page.tsx` is a read-only list
++ empty state. The create / edit / pause / resume / detail flow is
+intentionally **out of scope** for the MVP and ships in a follow-up
+ticket. The page calls `GET /api/schedules` directly and renders the
+list — no mutation surface.
+
+### Tests
+
+- `backend/tests/test_schedule_repo.py` — repository CRUD + visibility
+- `backend/tests/test_schedule_service.py` — service / formatter
+- `backend/tests/test_schedule_router_authz.py` — REST authz matrix
+- `backend/tests/test_schedule_tool.py` — agent tool entry point
+- `backend/tests/test_executor_retry.py` — executor push / retry paths
+- `backend/tests/test_scheduler_recovery.py` — APScheduler recovery
+- `backend/tests/test_scheduling_config.py` — config schema + reload
+- `backend/tests/e2e/test_schedule_e2e.py` — happy-path e2e
+  (create → `executor.enqueue` → assert run row + bus push)

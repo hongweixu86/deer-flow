@@ -542,6 +542,35 @@ client.upload_files("thread-1", ["./report.pdf"])  # {"success": True, "files": 
 
 所有返回 dict 的方法都会在 CI 中通过 Gateway 的 Pydantic 响应模型校验（`TestGatewayConformance`），以确保内嵌 client 始终和 HTTP API schema 保持同步。完整 API 说明见 `backend/packages/harness/deerflow/client.py`。
 
+## 定时任务与飞书推送
+
+DeerFlow 支持按 cron 定时执行 agent 任务，并把结果推回触发它的飞书会话。一个典型的 30 秒上手示例：
+
+> 在飞书里对 DeerFlow 说：「每个工作日早上 9 点，总结一下昨天合并的 PR，把摘要链接发到这里。」Agent 流程会自动创建一条定时任务并向你确认，第二天早上 9 点一条带 📅 的日报就会出现在同一个飞书会话里——整个过程无需人工介入。
+
+同样的能力也能从 CLI 和 Web UI 使用。背后的链路是：
+
+- `Schedule` 表保存任务的 owner、prompt、cron 表达式（默认时区 `Asia/Shanghai`）和推送目标。
+- `SchedulerEngine`（APScheduler + 启动期 advisory 锁）在每个 tick 触发，调用 `ScheduleExecutor.enqueue(schedule_id)`。
+- 执行器先创建一条 `ScheduleRun` 记录，通过 `RunManager.create_or_reject` 把任务送进 langgraph，再通过 `MessageBus` 把格式化好的 `OutboundMessage` 推回飞书会话。
+
+直接走接口调用 — `POST /api/schedules`：
+
+```bash
+curl -X POST http://localhost:8001/api/schedules \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "kind": "cron",
+    "title": "每日 PR 摘要",
+    "prompt": "总结昨天合并的 PR，并把摘要链接发到这里。",
+    "cron_expr": "0 9 * * 1-5",
+    "cron_tz": "Asia/Shanghai",
+    "target": {"channel": "feishu", "chat_id": "oc_xxxxxxxxxxxx"}
+  }'
+```
+
+完整的 REST 接口（`GET` / `PATCH` / `pause` / `resume` / `subscribe` / `runs`）、权限矩阵，以及面向内嵌 / 内部平台集成的多副本、HA 注意事项都写在 [`backend/CLAUDE.md` → Scheduling](backend/CLAUDE.md#scheduling) 里。当前 Web UI 仅提供 `/workspace/schedules` 的只读列表，创建 / 编辑 / 暂停界面会作为后续工作补齐。
+
 ## 文档
 
 - [贡献指南](CONTRIBUTING.md) - 开发环境搭建与协作流程
