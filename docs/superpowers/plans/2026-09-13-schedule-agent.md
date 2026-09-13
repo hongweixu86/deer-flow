@@ -173,7 +173,7 @@ Open `packages/harness/deerflow/config/reload_boundary.py`, find the `STARTUP_ON
 
 - [ ] **Step 6: Update `config.example.yaml`**
 
-Add the `scheduling:` and `limits:` blocks as in the spec §10. Bump `config_version` at the top of the file by 1.
+Add the `scheduling:` and `limits:` blocks as in the spec §10. Also add `tool_search.runtime.scheduling_enabled: false` under an existing `tool_search` section (or create one if missing). Bump `config_version` at the top of the file by 1.
 
 - [ ] **Step 7: Run the test; expect PASS**
 
@@ -578,15 +578,13 @@ async def test_start_loads_active_schedules(tmp_path):
 
     factory = get_session_factory(url=f"sqlite:///{tmp_path}/sched.db")
     repo = ScheduleRepository(factory)
+    from deerflow.persistence.models.schedule import ScheduleKind
     s = repo.create(
-        title="t", owner_user_id="u1",
-        kind=repo.list_active and "cron" or "cron",  # placeholder
+        title="t", owner_user_id="u1", kind=ScheduleKind.CRON,
         cron_expr="0 9 * * *",
         prompt="p",
         target_json='{"channel":"feishu","chat_id":"oc_1"}',
     )
-    # Simpler: use the explicit enum
-    from deerflow.persistence.models.schedule import ScheduleKind
     s2 = repo.create(title="t2", owner_user_id="u1", kind=ScheduleKind.ONE_SHOT,
                      run_at=datetime.now(timezone.utc) + timedelta(hours=1),
                      prompt="p", target_json='{"channel":"feishu","chat_id":"oc_1"}')
@@ -647,10 +645,8 @@ class SchedulerEngine:
 
         # Job store: reuse the existing engine's URL.
         from deerflow.persistence.engine import get_session_factory
-        factory = get_session_factory()
-        bind = (factory().__bind__)  # get dialect/url
-        # Use the engine's URL via a direct session.
         from sqlalchemy import text
+        factory = get_session_factory()
         async with factory() as session:
             url = str(session.get_bind().url)
 
@@ -963,18 +959,70 @@ from app.scheduling.audit import audit_schedule_event
 from app.scheduling.observability import Metrics
 
 @pytest.mark.asyncio
-async def test_queue_full_marks_failed_and_alerts(tmp_path):
-    # set up repo with one schedule, one subscriber
-    # patch the executor's queue size to 1
-    # enqueue twice in a row without the worker draining
-    # assert: second enqueue marks a schedule_run as failed and pushes an alert
-    ...
+async def test_queue_full_marks_failed_and_alerts(tmp_path, monkeypatch):
+    from deerflow.persistence.engine import get_session_factory
+    from deerflow.persistence.schedule_repo import ScheduleRepository
+    from deerflow.persistence.models.schedule import ScheduleKind, ScheduleRunStatus
+    from app.scheduling.observability import Metrics
+    factory = get_session_factory(url=f"sqlite:///{tmp_path}/exec.db")
+    repo = ScheduleRepository(factory)
+    from app.scheduling.executor import ScheduleExecutor
+    # 1. Set up schedule + subscriber.
+    s = repo.create(title="t", owner_user_id="u1", kind=ScheduleKind.ONE_SHOT,
+                    run_at=datetime.now(timezone.utc) + timedelta(hours=1),
+                    prompt="p", target_json='{"channel":"feishu","chat_id":"oc_1"}')
+    repo.subscribe(s.id, "u1", target_json='{"channel":"feishu","chat_id":"oc_1"}')
+    # 2. Build executor with queue size 1, but never start workers.
+    cfg = type("Cfg", (), {"retry": type("R", (), {"max_attempts": 3, "backoff_seconds": [60,300,900]})(), "executor": type("E", (), {"per_schedule_queue_size": 1, "max_concurrent_runs": 0, "persist_queue": False})(), "push": type("P", (), {"max_text_length": 4000, "include_run_url": True})()})()
+    bus = type("Bus", (), {"publish_outbound": lambda self, msg: _captured.append(msg)})()
+    _captured = []
+    rm = type("RM", (), {"create_or_reject": staticmethod(lambda **kw: type("R",(),{"run_id":None})())})()
+    ex = ScheduleExecutor(repo=repo, run_manager=rm, message_bus=bus, config=cfg)
+    # 3. Two enqueues; the second must drop.
+    await ex.enqueue(s.id, subscriber_user_id="u1")
+    await ex.enqueue(s.id, subscriber_user_id="u1")
+    # Synthetic failed run row was written.
+    runs = [r for r in repo.list_runs(s.id, viewer_user_id="u1", limit=10) if r.error_summary == "queue_full"]
+    assert any(r.status == ScheduleRunStatus.FAILED for r in runs)
+    # Alert was pushed.
+    assert any(getattr(m, "metadata", {}).get("queue_full") for m in _captured)
 
 @pytest.mark.asyncio
-async def test_retry_then_final_failure(tmp_path):
-    # patch RunManager.create_or_reject to raise on first 2 calls, succeed on 3rd? no — final failure path
-    # verify: 3 attempts, then status=failed + alert, no further retries
-    ...
+async def test_retry_then_final_failure(tmp_path, monkeypatch):
+    from deerflow.persistence.engine import get_session_factory
+    from deerflow.persistence.schedule_repo import ScheduleRepository
+    from deerflow.persistence.models.schedule import ScheduleKind, ScheduleRunStatus
+    factory = get_session_factory(url=f"sqlite:///{tmp_path}/exec2.db")
+    repo = ScheduleRepository(factory)
+    s = repo.create(title="t", owner_user_id="u1", kind=ScheduleKind.ONE_SHOT,
+                    run_at=datetime.now(timezone.utc) + timedelta(hours=1),
+                    prompt="p", target_json='{"channel":"feishu","chat_id":"oc_1"}')
+    repo.subscribe(s.id, "u1", target_json='{"channel":"feishu","chat_id":"oc_1"}')
+    cfg = type("Cfg", (), {"retry": type("R", (), {"max_attempts": 3, "backoff_seconds": [60,300,900]})(), "executor": type("E", (), {"per_schedule_queue_size": 8, "max_concurrent_runs": 1, "persist_queue": False})(), "push": type("P", (), {"max_text_length": 4000, "include_run_url": True})()})()
+    _captured = []
+    bus = type("Bus", (), {"publish_outbound": lambda self, msg: _captured.append(msg)})()
+    # First 3 attempts all raise; on attempt > 3 the executor must mark failed + push alert.
+    class FlakyRM:
+        def __init__(self): self.calls = 0
+        def create_or_reject(self, **kw):
+            self.calls += 1
+            raise RuntimeError("provider 5xx")
+    rm = FlakyRM()
+    ex = ScheduleExecutor(repo=repo, run_manager=rm, message_bus=bus, config=cfg)
+    await ex.start()
+    await ex.enqueue(s.id, subscriber_user_id="u1")
+    # Wait for up to 3 seconds for the executor to drain.
+    import asyncio
+    for _ in range(30):
+        if rm.calls >= 3:
+            break
+        await asyncio.sleep(0.1)
+    await ex.stop()
+    runs = repo.list_runs(s.id, viewer_user_id="u1", limit=10)
+    final = [r for r in runs if r.status == ScheduleRunStatus.FAILED]
+    assert final, "expected at least one failed run row"
+    # After 3 attempts the alert must be pushed (any one of the captured messages has failure text).
+    assert any("❌" in getattr(m, "text", "") for m in _captured)
 ```
 
 - [ ] **Step 2: Run the test; expect ImportError**
