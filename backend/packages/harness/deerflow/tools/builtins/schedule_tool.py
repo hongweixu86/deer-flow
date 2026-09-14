@@ -1,10 +1,18 @@
 """Built-in chat-side tools for the scheduling subsystem (Task 9).
 
-The eight tools in this module are thin async wrappers around
-:class:`app.scheduling.service.ScheduleService`. They are exposed to the
-lead agent only when the call site sets ``scheduling_enabled=True`` in
+The eight tools in this module are thin async wrappers around the
+schedule service. They are exposed to the lead agent only when the
+call site sets ``scheduling_enabled=True`` in
 :func:`deerflow.tools.get_available_tools`; the default is off so
 channels that do not need scheduling cannot accidentally invoke them.
+
+The service lives in the app layer, but this module is in the harness
+layer and must not import from ``app.*`` (enforced by
+:mod:`tests.test_harness_boundary`). The contract is declared as
+:class:`deerflow.scheduling.ScheduleServiceProtocol` and the live
+implementation is registered with
+:func:`deerflow.scheduling.set_schedule_service` at gateway startup.
+Tools reach it through :func:`deerflow.scheduling.get_schedule_service`.
 
 Tools
 -----
@@ -42,16 +50,6 @@ user:
 
 The agent sees the string and can decide whether to retry, ask for
 clarification, or surface the error.
-
-Boundary note
--------------
-
-This module imports :mod:`app.scheduling.service` directly. The
-project-wide boundary says ``app ↔ deerflow`` should be one-way
-(``app`` may import ``deerflow``, not the reverse). The violation is
-accepted for the MVP per the spec §17 follow-up; a future task can
-break the cycle by having the service expose a Protocol in
-``deerflow`` and the tool call it through that Protocol.
 """
 
 from __future__ import annotations
@@ -64,34 +62,9 @@ from typing import Any
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from deerflow.scheduling import get_schedule_service
+
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Service accessor
-# ---------------------------------------------------------------------------
-
-
-def get_schedule_service() -> Any | None:
-    """Return the running :class:`~app.scheduling.service.ScheduleService`.
-
-    The gateway's lifespan starts the scheduling subsystem and stores
-    the container in ``app.state.scheduler_service`` (see
-    :mod:`app.scheduling.lifespan`). This helper unwraps the
-    container's ``.service`` attribute so the tools see the
-    :class:`~app.scheduling.service.ScheduleService` directly.
-
-    Returns ``None`` if the scheduler is not running (e.g. the lifespan
-    has not started yet, the scheduler is disabled in config, or this
-    is a test that has not injected a stub). Tools surface this as a
-    clear error string instead of crashing.
-    """
-    from app.scheduling.lifespan import get_scheduler_service
-
-    container = get_scheduler_service()
-    if container is None:
-        return None
-    return getattr(container, "service", None)
 
 
 # ---------------------------------------------------------------------------

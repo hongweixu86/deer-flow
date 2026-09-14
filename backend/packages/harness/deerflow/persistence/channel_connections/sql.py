@@ -196,6 +196,17 @@ class ChannelConnectionRepository:
             result = await session.execute(select(ChannelConnectionRow).where(ChannelConnectionRow.owner_user_id == owner_user_id).order_by(ChannelConnectionRow.updated_at.desc(), ChannelConnectionRow.id.desc()))
             return [self._connection_to_dict(row) for row in result.scalars()]
 
+    async def get_for_owner(self, connection_id: str, owner_user_id: str) -> dict[str, Any] | None:
+        """Look up a connection by id; return its dict only if it belongs to the
+        given owner. Returns ``None`` otherwise so callers can distinguish
+        'missing' from 'wrong owner' without leaking existence to a probe.
+        """
+        async with self.session_factory() as session:
+            row = await session.get(ChannelConnectionRow, connection_id)
+            if row is None or row.owner_user_id != owner_user_id:
+                return None
+            return self._connection_to_dict(row)
+
     async def disconnect_connection(self, *, connection_id: str, owner_user_id: str) -> bool:
         async with self.session_factory() as session:
             row = await session.get(ChannelConnectionRow, connection_id)

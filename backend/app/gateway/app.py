@@ -230,7 +230,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             from app.scheduling.lifespan import start_scheduler_service
 
-            scheduler_service = await start_scheduler_service(startup_config)
+            # Share the channel service's MessageBus so the Feishu /
+            # Slack / etc. workers that already subscribe to outbound
+            # messages also receive schedule results. Without this the
+            # scheduler publishes to a fresh bus that has zero
+            # listeners and the Feishu push silently no-ops.
+            shared_bus = getattr(channel_service, "bus", None)
+            scheduler_service = await start_scheduler_service(startup_config, message_bus=shared_bus)
             app.state.scheduler_service = scheduler_service.service
             app.state.scheduler_engine = scheduler_service.engine
             logger.info("Scheduler service started: instance=%s", scheduler_service.instance_id)
