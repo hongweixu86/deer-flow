@@ -446,7 +446,14 @@ def _extract_artifacts(result: dict | list) -> list[str]:
                     paths = args.get("filepaths", [])
                     if isinstance(paths, list):
                         artifacts.extend(p for p in paths if isinstance(p, str))
-    return artifacts
+    # Deduplicate by exact path string. ``state["artifacts"]`` is deduped by the
+    # ``merge_artifacts`` reducer, but this helper walks the message history
+    # directly so a model that calls ``present_files`` more than once in a turn
+    # (e.g. draft + final) ends up with the same path listed multiple times
+    # here. Without dedup, every IM-channel adapter would upload the same file
+    # multiple times — observed 2026-09-11 as two `告警分析报告.md` pushed to
+    # Feishu.
+    return list(dict.fromkeys(artifacts))
 
 
 def _is_hidden_human_control_message(msg: Mapping[str, Any]) -> bool:

@@ -3529,6 +3529,41 @@ class TestExtractArtifacts:
         }
         assert _extract_artifacts(result) == ["/mnt/user-data/outputs/a.txt", "/mnt/user-data/outputs/b.csv"]
 
+    def test_dedupes_same_path_emitted_twice_in_one_turn(self):
+        """If the agent calls present_files with the same path twice in one turn
+        (e.g. draft + final), the returned list must contain the path only once.
+        Otherwise the Feishu/Slack/etc. adapters upload the same file twice.
+
+        Regression: 2026-09-11 two `告警分析报告.md` were pushed to Feishu
+        because state-level `merge_artifacts` dedupes but `_extract_artifacts`
+        walked the message history without dedup, so OutboundMessage.attachments
+        carried `[path, path]`.
+        """
+        from app.channels.manager import _extract_artifacts
+
+        result = {
+            "messages": [
+                {"type": "human", "content": "生成告警分析报告"},
+                {
+                    "type": "ai",
+                    "content": "Draft ready.",
+                    "tool_calls": [
+                        {"name": "present_files", "args": {"filepaths": ["/mnt/user-data/outputs/告警分析报告.md"]}},
+                    ],
+                },
+                {"type": "tool", "name": "present_files", "content": "ok"},
+                {
+                    "type": "ai",
+                    "content": "Final version ready.",
+                    "tool_calls": [
+                        {"name": "present_files", "args": {"filepaths": ["/mnt/user-data/outputs/告警分析报告.md"]}},
+                    ],
+                },
+                {"type": "tool", "name": "present_files", "content": "ok"},
+            ]
+        }
+        assert _extract_artifacts(result) == ["/mnt/user-data/outputs/告警分析报告.md"]
+
     def test_ignores_hidden_human_control_messages(self):
         """Hidden control messages should not hide current-turn present_files artifacts."""
         from app.channels.manager import _extract_artifacts
