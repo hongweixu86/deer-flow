@@ -1,0 +1,16 @@
+ARG RESOURCE_IMAGE=deerflow-offline-resources:local
+FROM ${RESOURCE_IMAGE}
+COPY backend/ /app/backend/
+COPY frontend/ /app/frontend/
+COPY skills/ /app/skills/
+COPY config.example.yaml /app/config.example.yaml
+COPY docker/offline/ /opt/offline-tools/
+ENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/offline/wheels PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_OFFLINE=1 UV_NO_SYNC=1 UV_PROJECT_ENVIRONMENT=/opt/deerflow-venv PYTHONPATH=/app/backend \
+    VIRTUAL_ENV=/opt/deerflow-venv PATH=/opt/deerflow-venv/bin:$PATH \
+    DEER_FLOW_PROJECT_ROOT=/app DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://127.0.0.1:8001
+RUN sh /opt/offline-tools/rebuild.sh all
+WORKDIR /app/backend
+EXPOSE 3000 8001
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["bash"]

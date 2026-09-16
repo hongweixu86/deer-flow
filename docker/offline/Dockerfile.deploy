@@ -1,0 +1,4 @@
+ARG IMAGE=deerflow-offline:local
+FROM ${IMAGE}
+# Keep the already verified musl build; add operational tools without rebuilding Python.
+RUN apk add --no-cache docker-cli curl tmux
