@@ -1,0 +1,53 @@
+name: deerflow-offline
+services:
+  app:
+    image: deerflow-offline-deploy:local
+    pull_policy: never
+    command: ["bash", "/opt/offline-tools/start.sh"]
+    restart: unless-stopped
+    stop_grace_period: 60s
+    env_file: ./runtime.env
+    environment:
+      DEER_FLOW_PROJECT_ROOT: /app
+      DEER_FLOW_HOME: /data
+      DEER_FLOW_CONFIG_PATH: /deployment/config.yaml
+      DEER_FLOW_EXTENSIONS_CONFIG_PATH: /deployment/extensions_config.json
+      DEER_FLOW_SKILLS_PATH: /app/skills
+      DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://127.0.0.1:8001
+      DEER_FLOW_HOST_BASE_DIR: ${DEPLOY_ROOT:?Run deploy.sh init first}/data
+      DEER_FLOW_HOST_SKILLS_PATH: ${DEPLOY_ROOT}/skills
+      DEER_FLOW_SANDBOX_HOST: host.docker.internal
+      NO_PROXY: localhost,127.0.0.1,app,gateway,frontend,nginx,host.docker.internal
+      no_proxy: localhost,127.0.0.1,app,gateway,frontend,nginx,host.docker.internal
+    volumes:
+      - ./config:/deployment
+      - ./data:/data
+      - ./skills:/app/skills
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      default:
+        aliases: [gateway, frontend]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: "3"
+  nginx:
+    image: deerflow-offline-nginx:local
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:${PORT:-2026}:2026"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    logging: *logging

@@ -1,0 +1,5 @@
+# Opt in only for Docker-managed AIO sandboxes. The socket grants host Docker control.
+services:
+  app:
+    volumes:
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock

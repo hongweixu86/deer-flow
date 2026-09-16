@@ -922,6 +922,7 @@ deerflow --json  "hello"                       # 无头模式，输出按行分�
 - [配置指南](backend/docs/CONFIGURATION.md) - 安装与配置说明
 - [架构概览](backend/CLAUDE.md) - 技术架构说明
 - [后端架构](backend/README.md) - 后端架构与 API 参考
+- [musl 离线开发镜像](docker/offline/README.zh-CN.md) - 前后端打包、离线依赖资源及容器内重建
 
 ## ⚠️ 安全使用
 

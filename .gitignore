@@ -67,9 +67,18 @@ config.yaml.bak
 .gstack/
 .worktrees
 
+<<<<<<< HEAD
 # Monocle agent-observability trace output (local file exporter)
 .monocle/
 .codegraph/codegraph.db
 .codegraph/codegraph.db-shm
 .codegraph/codegraph.lock
 .codegraph/daemon.pid
+=======
+.superpowers/
+
+# Offline musl images and dependency bundles
+.offline-output/
+.offline-deploy-output/
+docker/offline/seed-wheels/*.whl
+>>>>>>> e1325997 (feat: add musl offline build and persistent Compose deployment)

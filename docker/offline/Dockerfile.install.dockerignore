@@ -1,0 +1,17 @@
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/__pycache__
+**/node_modules
+**/.next
+**/.deer-flow
+**/config.yaml
+**/extensions_config.json
+**/*.log
+.offline-output
+.worktrees
+.codex
+.claude
+.omc
