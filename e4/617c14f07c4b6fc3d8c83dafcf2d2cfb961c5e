@@ -1,0 +1,47 @@
+frontend/src/components/landing/sections/sandbox-section.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 30,65,74,88,106,109,112,115,118
+frontend/src/app/layout.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 23-27
+  s_b6794e6532ce88::t_f99f239202b29e 22
+frontend/src/styles/globals.css
+  s_b6794e6532ce88::t_795a946ba3c763 227-257,267-268,278,334-343
+frontend/src/components/ui/magic-bento.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 31
+frontend/src/components/landing/hero.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 16,20-23,28-29,33,59
+  s_b6794e6532ce88::t_8a58ddb8f8a2e3 32
+frontend/src/components/ui/magic-bento.css
+  s_b6794e6532ce88::t_795a946ba3c763 20-21,41,142-143,167-168,183,190-191
+frontend/src/components/landing/header.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 24,55
+frontend/src/components/landing/sections/case-study-section.tsx
+  s_b6794e6532ce88::t_f99f239202b29e 84
+frontend/src/app/page.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 12
+frontend/src/components/landing/sections/whats-new-section.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 8
+frontend/src/components/landing/progressive-skills-animation.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 353,356-357,360,375,378,380,393,408,410,412-413,432,443,451,459,461,464,511-512,528-529,544,559,576,579,601,604,625-627,655-656,658,666,692-693
+frontend/src/components/landing/sections/community-section.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 15
+frontend/src/components/theme-provider.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 14
+frontend/src/components/landing/sections/skills-section.tsx
+  s_b6794e6532ce88::t_795a946ba3c763 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4617c14f07c4b6fc3d8c83dafcf2d2cfb961c5e",
+  "prompts": {},
+  "sessions": {
+    "s_b6794e6532ce88": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b343-0833-7d82-8e7b-d18336baf975",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "guch8017 <guch8017@gmail.com>"
+    }
+  }
+}
