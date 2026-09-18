@@ -1,0 +1,69 @@
+.gitignore
+  s_207f345378844d::t_56f159f50bc21c 65-69
+README_zh.md
+  s_207f345378844d::t_f1f749af2fd3b3 580
+docker/offline/Dockerfile
+  s_207f345378844d::t_339a8609a76a21 1-33
+docker/offline/Dockerfile.deploy
+  s_207f345378844d::t_14c2dcf14c6212 1-4
+docker/offline/Dockerfile.dockerignore
+  s_207f345378844d::t_493c26f4de66ca 1-17
+docker/offline/Dockerfile.install
+  s_207f345378844d::t_06ed5dfa797c01 1-16
+docker/offline/Dockerfile.install.dockerignore
+  s_207f345378844d::t_375db8309040aa 1-17
+docker/offline/README.zh-CN.md
+  s_207f345378844d::t_2e6306d7f2e48a 1-165
+docker/offline/deploy/README.zh-CN.md
+  s_207f345378844d::t_84fb394317a873 1-97
+docker/offline/deploy/compose.aio.yaml
+  s_207f345378844d::t_821a7ea2161252 1-5
+docker/offline/deploy/compose.yaml
+  s_207f345378844d::t_da014c2292d939 1-53
+docker/offline/deploy/deploy.sh
+  s_207f345378844d::t_b9fd070d6dde04 1-40
+docker/offline/deploy/init.py
+  s_207f345378844d::t_2cb19dd5c53dfd 1-49
+docker/offline/deploy/nginx.conf
+  s_207f345378844d::t_fafa3370d454c8 1-227
+docker/offline/native-compat.sh
+  s_207f345378844d::t_d1bbf0f2016b4a 1-28
+docker/offline/prepare.sh
+  s_207f345378844d::t_cdcc49e55350c6 1-61
+docker/offline/rebuild.sh
+  s_207f345378844d::t_46da5b99a6d239 1-35
+docker/offline/seed-wheels/README.md
+  s_207f345378844d::t_c13c5eb9cf093b 1-9
+docker/offline/sqlite-vec.py
+  s_207f345378844d::t_93062a2e7f8341 1-69
+docker/offline/sqlite-vec.sh
+  s_207f345378844d::t_29faad92488a9a 1-11
+docker/offline/start.sh
+  s_207f345378844d::t_8431e083294e0a 1-21
+docker/offline/verify.py
+  s_207f345378844d::t_cacab2f6b9191f 1-43
+docker/offline/warm-tokenizers.py
+  s_207f345378844d::t_58b3b325660cb3 1-32
+scripts/build-offline-deploy.sh
+  s_207f345378844d::t_b751904b807968 1-35
+scripts/build-offline.sh
+  s_207f345378844d::t_51c91f5978bdfb 1-77
+scripts/tests/test_build_offline.py
+  s_207f345378844d::t_89651dbfa842b6 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1325997eb39b3cd58af6db4b4a705c2712e99dc",
+  "prompts": {},
+  "sessions": {
+    "s_207f345378844d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a2fe-eea0-7ae3-89e9-6837af55f32f",
+        "model": "unknown"
+      },
+      "human_author": "unknown"
+    }
+  }
+}
