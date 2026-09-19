@@ -112,8 +112,8 @@ class OutboundMessage:
 
     channel_name: str
     chat_id: str
+    thread_id: str
     text: str
-    thread_id: str | None = None
     artifacts: list[str] = field(default_factory=list)
     attachments: list[ResolvedAttachment] = field(default_factory=list)
     is_final: bool = True

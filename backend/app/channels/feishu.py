@@ -474,50 +474,6 @@ class FeishuChannel(Channel):
         request = self._CreateMessageRequest.builder().receive_id_type("chat_id").request_body(self._CreateMessageRequestBody.builder().receive_id(chat_id).msg_type("interactive").content(content).build()).build()
         await asyncio.to_thread(self._api_client.im.v1.message.create, request)
 
-    async def _send_chat_message(self, msg: OutboundMessage) -> None:
-        """Send a chat-level (no-thread) message via CreateMessageRequest.
-
-        Used when ``OutboundMessage.thread_id`` is None — i.e., there is no
-        DeerFlow thread to reply to. Falls through to the existing ``send_file``
-        path for attachments (which already handles ``thread_ts`` being None
-        by using the chat-level create API).
-        """
-        if not self._api_client:
-            logger.warning("[Feishu] _send_chat_message called but no api_client available")
-            return
-
-        logger.info(
-            "[Feishu] sending chat-level message: chat_id=%s, text_len=%d",
-            msg.chat_id,
-            len(msg.text),
-        )
-        await self._create_card(msg.chat_id, msg.text)
-
-    async def _on_outbound(self, msg: OutboundMessage) -> None:
-        """Override: dispatch to chat-level send when no thread_id, else reply path.
-
-        Mirrors the base class attachment handling — the text send runs first,
-        then any attachments. If the text send fails, file uploads are skipped.
-        """
-        if msg.channel_name != self.name:
-            return
-        try:
-            if msg.thread_id is None:
-                await self._send_chat_message(msg)
-            else:
-                await self.send(msg)
-        except Exception:
-            logger.exception("Failed to send outbound message on channel %s", self.name)
-            return  # Do not attempt file uploads when the text message failed
-
-        for attachment in msg.attachments:
-            try:
-                success = await self.send_file(msg, attachment)
-                if not success:
-                    logger.warning("[%s] file upload skipped for %s", self.name, attachment.filename)
-            except Exception:
-                logger.exception("[%s] failed to upload file %s", self.name, attachment.filename)
-
     async def _update_card(self, message_id: str, text: str) -> None:
         """Patch an existing card message in place."""
         if not self._api_client or not self._PatchMessageRequest:
