@@ -6,7 +6,7 @@ from deerflow.config import get_app_config
 from deerflow.config.app_config import AppConfig
 from deerflow.reflection import resolve_variable
 from deerflow.sandbox.security import is_host_bash_allowed
-from deerflow.tools.builtins import SCHEDULE_TOOLS, ask_clarification_tool, present_file_tool, task_tool, view_image_tool
+from deerflow.tools.builtins import ask_clarification_tool, present_file_tool, task_tool, view_image_tool
 from deerflow.tools.mcp_metadata import tag_mcp_tool
 from deerflow.tools.sync import make_sync_tool_wrapper
 
@@ -46,7 +46,6 @@ def get_available_tools(
     include_mcp: bool = True,
     model_name: str | None = None,
     subagent_enabled: bool = False,
-    scheduling_enabled: bool = False,
     *,
     app_config: AppConfig | None = None,
 ) -> list[BaseTool]:
@@ -60,11 +59,6 @@ def get_available_tools(
         include_mcp: Whether to include tools from MCP servers (default: True).
         model_name: Optional model name to determine if vision tools should be included.
         subagent_enabled: Whether to include subagent tools (task, task_status).
-        scheduling_enabled: Whether to include the schedule_* chat-side tools
-            (schedule_create, schedule_list, etc.). Defaults to ``False`` so
-            channels that do not need scheduling cannot accidentally invoke
-            them. The call site (chat agent assembly) flips this to ``True``
-            when the agent is constructed for a user-facing channel.
 
     Returns:
         List of available tools.
@@ -105,14 +99,6 @@ def get_available_tools(
     if subagent_enabled:
         builtin_tools.extend(SUBAGENT_TOOLS)
         logger.info("Including subagent tools (task)")
-
-    # Add schedule tools only if enabled via runtime parameter. Default
-    # off so channels that do not need scheduling cannot accidentally
-    # invoke them. When the chat agent is built for a user-facing
-    # channel the call site passes ``scheduling_enabled=True``.
-    if scheduling_enabled:
-        builtin_tools.extend(SCHEDULE_TOOLS)
-        logger.info("Including schedule tools (schedule_create, schedule_list, …)")
 
     # If no model_name specified, use the first model (default)
     if model_name is None and config.models:
