@@ -49,20 +49,6 @@ def _seed_pre_3658_database(db_path: Path) -> None:
         Base.metadata.create_all(sync_engine)
         with sync_engine.begin() as conn:
             conn.execute(sa.text("ALTER TABLE runs DROP COLUMN token_usage_by_model"))
-            # Post-baseline tables introduced alongside the 821ecd801e75
-            # migration (``schedules``, ``schedule_runs``,
-            # ``schedule_subscriptions``). The unrestricted ``create_all`` above
-            # brings them into existence via the ORM, but the legacy branch
-            # must still go through the migration's own ``op.create_table``
-            # calls for the upgrade path to be exercised. Drop them to
-            # reproduce the pre-migration state. Reverse FK order: subscriptions
-            # -> runs -> schedules.
-            for table in (
-                "schedule_subscriptions",
-                "schedule_runs",
-                "schedules",
-            ):
-                conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
     finally:
         sync_engine.dispose()
 
@@ -90,7 +76,7 @@ async def test_legacy_database_recovers_token_usage_column(tmp_path: Path) -> No
             cols = {row[1] for row in raw.execute("PRAGMA table_info(runs)").fetchall()}
             assert "token_usage_by_model" in cols
             version_row = raw.execute("SELECT version_num FROM alembic_version").fetchone()
-            assert version_row[0] == "821ecd801e75"
+            assert version_row[0] == "0002_runs_token_usage"
 
         # And the read path that originally 500'd must now succeed.
         sf = get_session_factory()
@@ -119,17 +105,6 @@ async def test_legacy_database_with_manual_alter_still_bootstraps(tmp_path: Path
         Base.metadata.create_all(sync_engine)
         # Don't strip the column -- this is the "user already ran the
         # workaround" case where create_all already produced it.
-        with sync_engine.begin() as conn:
-            # Drop the post-baseline schedule tables (created above by the
-            # unrestricted ``create_all``) so the legacy branch's
-            # ``upgrade head`` is exercised against a clean slate. See
-            # ``_seed_pre_3658_database`` for the same rationale.
-            for table in (
-                "schedule_subscriptions",
-                "schedule_runs",
-                "schedules",
-            ):
-                conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
     finally:
         sync_engine.dispose()
 
@@ -141,6 +116,6 @@ async def test_legacy_database_with_manual_alter_still_bootstraps(tmp_path: Path
             # No duplicate column -- list, not set, to catch dupes.
             assert cols.count("token_usage_by_model") == 1
             version_row = raw.execute("SELECT version_num FROM alembic_version").fetchone()
-            assert version_row[0] == "821ecd801e75"
+            assert version_row[0] == "0002_runs_token_usage"
     finally:
         await close_engine()
