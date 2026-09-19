@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 15
+config_version: 14
 
 # ============================================================================
 # Logging
@@ -692,11 +692,6 @@ tools:
 
 tool_search:
   enabled: false
-  runtime:
-    # Expose scheduling_* tools (create/list/get/update/delete + manual trigger) to the agent.
-    # Set to true only after the scheduler engine is enabled and at least one
-    # per-user backing store is provisioned — see the `scheduling:` block below.
-    scheduling_enabled: false
 
 # ============================================================================
 # Tool Output Budget Protection
@@ -1415,49 +1410,3 @@ run_events:
 #   failure_threshold: 5
 #   # Time in seconds before attempting to recover (default: 60)
 #   recovery_timeout_sec: 60
-
-# ============================================================================
-# Scheduling (startup-only — requires process restart)
-# ============================================================================
-# Drives the scheduled-agent-run engine: per-process executor, retry policy,
-# pushback payload limits, and APScheduler job defaults. All `scheduling.*`
-# fields are read once at startup; later tasks (REST API, agent tools) read
-# from `get_app_config().scheduling.*` and changes need a restart.
-
-scheduling:
-  enabled: true
-  timezone: Asia/Shanghai
-  executor:
-    # Max schedule runs in flight at once across this process.
-    max_concurrent_runs: 8
-    # Per-schedule in-memory queue size; bursts above this cap are dropped.
-    per_schedule_queue_size: 8
-    # When true, queued schedule runs survive process restarts (later task).
-    persist_queue: false
-  retry:
-    # Total attempts including the first try (1 = no retry).
-    max_attempts: 3
-    # Backoff delay in seconds before each retry, indexed by attempt - 1.
-    backoff_seconds: [60, 300, 900]
-  push:
-    # Max pushback text length in characters; longer replies are truncated.
-    max_text_length: 4000
-    # Include a deep link to the run detail page in pushback messages.
-    include_run_url: true
-  apscheduler:
-    # Coalesce missed firings into a single catch-up run.
-    coalesce: true
-    # Allow only one concurrent run per schedule (overlap protection).
-    max_instances: 1
-    # Seconds after a missed firing during which APScheduler will still fire it.
-    misfire_grace_seconds: 300
-
-# ============================================================================
-# Limits (startup-only — requires process restart)
-# ============================================================================
-# Per-user resource caps enforced by the scheduling API.
-
-limits:
-  # Maximum number of active (non-paused, non-deleted) schedules a single user
-  # may own. Enforced at create time; the gateway reads this once at startup.
-  max_active_schedules_per_user: 50

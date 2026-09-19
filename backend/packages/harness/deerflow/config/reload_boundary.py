@@ -11,8 +11,7 @@ change at runtime.
 The registry covers two kinds of entries:
 
 - Top-level ``AppConfig`` fields (``database``, ``checkpointer``,
-  ``run_events``, ``stream_bridge``, ``sandbox``, ``log_level``,
-  ``scheduling``, ``limits``). For
+  ``run_events``, ``stream_bridge``, ``sandbox``, ``log_level``). For
   these, :func:`format_field_description` produces the standardised
   ``"startup-only: ..."`` prefix that the matching Pydantic
   ``Field(description=...)`` carries, so the boundary surfaces in IDE
@@ -59,12 +58,6 @@ STARTUP_ONLY_FIELDS: dict[str, str] = {
     "channels": ("start_channel_service() is invoked once during startup; the live IM channel clients (Feishu, Slack, Telegram, DingTalk) are not rebuilt when channels.* changes."),
     "channel_connections": (
         "start_channel_service() wires the connection repository and channel workers once at startup, and the channel-connections router caches the merged provider config on app.state; channel_connections.* edits need a restart."
-    ),
-    "scheduling": (
-        "The scheduler/engine pairs APScheduler with a per-process executor whose concurrency, queue, retry and push defaults are captured during startup; later tasks read these via get_app_config().scheduling.* and require a restart to change."
-    ),
-    "limits": (
-        "The scheduling API enforces per-user caps (max_active_schedules_per_user) from get_app_config().limits.* at request time, but the cap set itself is a startup-time decision tied to the deployed multi-tenant plan; changes need a restart."
     ),
 }
 
