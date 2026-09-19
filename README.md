@@ -713,35 +713,6 @@ client.upload_files("thread-1", ["./report.pdf"])  # {"success": True, "files": 
 
 All dict-returning methods are validated against Gateway Pydantic response models in CI (`TestGatewayConformance`), ensuring the embedded client stays in sync with the HTTP API schemas. See `backend/packages/harness/deerflow/client.py` for full API documentation.
 
-## Scheduled Tasks & Feishu Push
-
-DeerFlow can run on a cron — and push the result back to the chat channel that owns the task. A typical 30-second flow:
-
-> In Feishu, write: **"Every weekday at 9am, summarise yesterday's merged PRs and post a link to the digest here."** The agent flow registers a schedule, confirms in chat, and the next morning a 📅 digest lands in the same chat — no human in the loop.
-
-The same surface is also reachable from the CLI and the Web UI. Behind the scenes:
-
-- A `Schedule` row stores owner, prompt, cron expression (Asia/Shanghai by default), and the target chat.
-- `SchedulerEngine` (APScheduler + a per-replica advisory lock) fires at the next tick and calls `ScheduleExecutor.enqueue(schedule_id)`.
-- The executor creates a `ScheduleRun` row, dispatches the run into langgraph via `RunManager.create_or_reject`, then publishes a formatted `OutboundMessage` over `MessageBus` back to the Feishu chat.
-
-Programmatic surface — `POST /api/schedules`:
-
-```bash
-curl -X POST http://localhost:8001/api/schedules \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "kind": "cron",
-    "title": "Daily PR digest",
-    "prompt": "Summarise yesterday'\''s merged PRs and post a link to the digest here.",
-    "cron_expr": "0 9 * * 1-5",
-    "cron_tz": "Asia/Shanghai",
-    "target": {"channel": "feishu", "chat_id": "oc_xxxxxxxxxxxx"}
-  }'
-```
-
-The full REST surface (`GET` / `PATCH` / `pause` / `resume` / `subscribe` / `runs`), the authz matrix, and the multi-tenant / HA considerations for embedders are documented in [`backend/CLAUDE.md` → Scheduling](backend/CLAUDE.md#scheduling). The current Web UI is a read-only list at `/workspace/schedules`; create / edit / pause UI ships in a follow-up.
-
 ## Documentation
 
 - [Contributing Guide](CONTRIBUTING.md) - Development environment setup and workflow
