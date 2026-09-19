@@ -157,7 +157,7 @@ All tables live in `deerflow.persistence.models.schedule` and are created via Al
 |---|---|---|
 | POST | `/api/schedules` | create |
 | GET  | `/api/schedules` | list; filters: `owner=me`, `subscribed=me`, `status` |
-| GET  | `/api/schedules/{id}` | detail; visible to owner, subscribers, and anyone with a `viewer_user_id` row (else 404, not 403, to avoid existence leak) |
+| GET  | `/api/schedules/{id}` | detail |
 | PATCH | `/api/schedules/{id}` | partial update; owner-only |
 | DELETE | `/api/schedules/{id}` | soft delete; owner-only |
 | POST | `/api/schedules/{id}/pause` | owner-only |
@@ -362,74 +362,3 @@ Strict `app → deerflow` boundary: scheduler, APScheduler dependency, and Feish
 3. Cross-schedule dependencies ("run B after A succeeds").
 4. Web-side natural-language → cron preview (re-uses the agent flow).
 5. Per-user quota and metering (if a SaaS tier is added).
-
-## 18. Integration concerns (for embedders / internal-platform integrators)
-
-This section is written for integrators embedding DeerFlow into an internal platform. It calls out the constraints that "just deploying the container" will not satisfy on its own. Implementers should not silently skip these — the corresponding knobs must exist and the corresponding tests must run.
-
-### 18.1 Deployment topology & HA
-- **Single-instance default**: the MVP assumes a single Gateway process. APScheduler in-process + SQLAlchemyJobStore is sufficient.
-- **Multi-replica footgun**: a second Gateway will re-load the same `schedules` and double-fire every run. The MVP mitigates this with a startup-time advisory lock:
-  - Postgres: `SELECT pg_try_advisory_lock(<constant>)`. The winner runs the scheduler; losers serve HTTP only and log a single `scheduler.skipped_reason=not_leader` line on startup.
-  - SQLite: `BEGIN IMMEDIATE` on a small `scheduler_leader` table; a row with `instance_id` + `acquired_at` is held. Losers poll and log.
-  - **The lock is per-process lifetime, not per-tick** — on crash the lock is released by the kernel when the process dies; the next replica takes over within `coalesce + misfire_grace_seconds`.
-- **When to upgrade**: as soon as the team runs >1 Gateway pod for any reason (rolling deploys, A/B, canary) — leader election via Consul / etcd / the existing store becomes mandatory. This is a follow-up but should be a backlog ticket, not a TODO comment.
-- **Queue persistence**: `scheduling.executor.persist_queue=false` (default) loses in-flight queue items on restart. Integrators who need at-least-once on a multi-replica deployment must set `true`, which switches the executor to `SELECT ... FOR UPDATE SKIP LOCKED` on `schedule_runs.status=queued`. This is more load on the DB and should be sized for.
-
-### 18.2 Multi-tenancy / authorisation matrix
-Authorization is not just "owner or not". The full matrix:
-
-| Action | owner | subscriber (enabled) | other logged-in user |
-|---|---|---|---|
-| List schedules | ✅ all mine + subscribed | ✅ only own / subscribed | ✅ only own / subscribed |
-| Get schedule detail | ✅ | ✅ | ✅ (if subscribed) or 404 |
-| Edit (title / prompt / cron / target) | ✅ | ❌ 403 | ❌ 403 |
-| Pause / Resume | ✅ | ❌ | ❌ |
-| Delete | ✅ | ❌ | ❌ |
-| Subscribe / Unsubscribe | ✅ (self) | ✅ (self) | ✅ (self) |
-| View runs | ✅ all runs for this schedule | ✅ only own runs | ❌ 404 |
-| Push to target | always allowed if `target_json` valid | always allowed | n/a |
-
-Enforcement points (each is a test):
-- `ScheduleRouter` (REST) — every mutating path checks `owner_user_id`.
-- `ScheduleRepository` (harness) — read methods take a `viewer_user_id` and apply the filter at SQL level, not Python post-filter, to avoid leaking IDs via 200 vs 404.
-- `target_json.connection_id` — see §6. Cross-user connections are always 403, never 200 with empty data.
-- `RunManager` is invoked with `user_id = subscriber_user_id`, not `owner_user_id`, so the per-thread sandbox directory and token usage are billed to the right tenant.
-
-### 18.3 Observability
-For a platform team to monitor this, every fire must produce a structured record. The minimum fields:
-
-| Where | Field | Why |
-|---|---|---|
-| log | `schedule_id`, `subscriber_user_id`, `attempt`, `next_retry_at`, `last_error` | debugging; tail-able |
-| log | `instance_id`, `leader=true/false` | disambiguate replicas |
-| metric | `schedule_fires_total{status,kind}` counter | throughput |
-| metric | `schedule_run_duration_seconds{kind}` histogram | latency |
-| metric | `schedule_retry_total{attempt}` counter | retry pressure |
-| metric | `schedule_push_failures_total{reason}` counter | push health |
-| audit event | `middleware:schedule` events on create / update / delete / pause / resume / subscribe | audit trail; same hook as `middleware:skill_activation` |
-
-Integrators should wire `schedule_fires_total` and `schedule_push_failures_total` into their existing dashboards, not invent a new dashboard.
-
-### 18.4 Rollout & kill switches
-- **Disable entirely**: `scheduling.enabled: false` in `config.yaml` (startup-only field). The Gateway starts but `SchedulerEngine` does not; `/api/schedules/*` returns 503 with a clear `scheduling_disabled` reason.
-- **Per-user disable**: `User.max_active_schedules = 0` overrides the global cap. Useful for off-boarding a tenant without a deploy.
-- **Per-channel disable**: schedules with `target.channel = "feishu"` are skipped when `channels.feishu.enabled = false`. They stay in the table for audit; no fire, no retry.
-- **Dry-run / shadow mode** (follow-up): `scheduling.dry_run: true` would fire the schedule, write a `schedule_runs` row, but skip the push. Useful for load-testing the scheduler before flipping on production traffic.
-- **Migration backout**: the Alembic migration is reversible (`alembic downgrade -1`). The reverse drops the three tables; in-flight runs are aborted. Subscribers lose access; threads and the langgraph runs are untouched.
-
-### 18.5 Integration with internal systems
-- **SSO**: schedule ownership is keyed on `get_effective_user_id()`; whatever the SSO integration produces is what appears in `owner_user_id` / `subscriber_user_id`. No special handling.
-- **Audit / SIEM**: the `middleware:schedule` audit events (see 18.3) are the integration point. Existing SIEM collectors that already read `middleware:skill_activation` get these for free.
-- **IM gateway**: the schedule target uses the same `ChannelConnection` infrastructure as live chat. There is no separate "scheduling" channel config — it inherits whatever rate-limiting / connection-pooling live chat already has. If the internal IM gateway has per-tenant rate limits, schedule push will share that budget; this is intentional and should be communicated to tenants.
-- **Billing / quotas**: `token_usage` from each scheduled run is already aggregated per `run_id` and is associated with `subscriber_user_id`. Existing token-usage dashboards will pick up scheduled runs automatically; no extra wiring.
-- **Secret management**: `target_json` never carries the channel secret — the secret lives in the channel's existing credential store. A stolen schedule row alone is not enough to push; the attacker also needs a `ChannelConnection` belonging to that user.
-
-### 18.6 Acceptance gates for an embedder
-A team integrating DeerFlow scheduling into an internal platform should treat the following as release-blocking, not nice-to-have:
-- Leader lock test: two Gateway replicas, only one logs `leader=true`; kill the leader, the other picks up within `misfire_grace_seconds`.
-- Restart test: kill -9 the Gateway, restart, verify all `status=active` schedules are recovered and `next_fire_at` is correct.
-- Cross-tenant authorisation test: user A creates a schedule, user B is not the owner, B's GETs return 404 (not 403, to avoid existence leaks).
-- Cross-tenant connection test: user A creates a schedule with user B's `connection_id`, server returns 403.
-- Push-failure test: feishu returns 500 three times → 3 attempts with backoff, then `❌` alert; no further retries.
-- Disable test: `scheduling.enabled=false` → no fire, `/api/schedules/*` returns 503.
