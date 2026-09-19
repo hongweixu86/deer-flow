@@ -224,19 +224,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception:
             logger.exception("No IM channels configured or channel service failed to start")
 
-        # Start the schedule service (Task 8). Idempotent; tolerates the
-        # case where the persistence engine is not ready by logging and
-        # continuing — schedules are an opt-in subsystem.
-        try:
-            from app.scheduling.lifespan import start_scheduler_service
-
-            scheduler_service = await start_scheduler_service(startup_config)
-            app.state.scheduler_service = scheduler_service.service
-            app.state.scheduler_engine = scheduler_service.engine
-            logger.info("Scheduler service started: instance=%s", scheduler_service.instance_id)
-        except Exception:
-            logger.exception("Scheduler service failed to start; /api/schedules will return 503")
-
         yield
 
         # Stop channel service on shutdown (bounded to prevent worker hang)
@@ -254,17 +241,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             )
         except Exception:
             logger.exception("Failed to stop channel service")
-
-        # Stop the schedule service on shutdown.
-        try:
-            from app.scheduling.lifespan import stop_scheduler_service
-
-            await asyncio.wait_for(
-                stop_scheduler_service(),
-                timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS,
-            )
-        except Exception:
-            logger.exception("Failed to stop scheduler service")
 
     logger.info("Shutting down API Gateway")
 
@@ -429,11 +405,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
-
-    # Schedule API (Task 8): mounted at /api/schedules via the router's own prefix.
-    from app.gateway.routers.schedules import router as schedules_router
-
-    app.include_router(schedules_router)
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
