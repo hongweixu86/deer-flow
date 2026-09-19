@@ -47,7 +47,7 @@ from deerflow.persistence.migrations._helpers import _normalize_default
 asyncio_test = pytest.mark.asyncio
 
 
-HEAD = "821ecd801e75"
+HEAD = "0002_runs_token_usage"
 BASELINE = "0001_baseline"
 
 
@@ -88,32 +88,11 @@ async def _seed_legacy_without_column(engine) -> None:
         # SQLite supports DROP COLUMN from 3.35.0; the test runner pins recent
         # Python which bundles a 3.40+ sqlite, so this is safe.
         await conn.execute(sa.text("ALTER TABLE runs DROP COLUMN token_usage_by_model"))
-        # Post-baseline tables introduced alongside the 821ecd801e75 migration
-        # (``schedules``, ``schedule_runs``, ``schedule_subscriptions``). The
-        # unrestricted ``create_all`` above brings them into existence via
-        # the ORM, but the legacy branch must still go through the migration's
-        # own ``op.create_table`` calls for the upgrade path to be exercised.
-        # Drop them to reproduce the pre-migration state.
-        for table in (
-            "schedule_subscriptions",
-            "schedule_runs",
-            "schedules",
-        ):
-            await conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
 
 
 async def _seed_legacy_with_column(engine) -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    async with engine.begin() as conn:
-        # See ``_seed_legacy_without_column`` for rationale: keep the seeder
-        # pre-migration so the legacy branch's ``upgrade head`` is exercised.
-        for table in (
-            "schedule_subscriptions",
-            "schedule_runs",
-            "schedules",
-        ):
-            await conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
 
 
 async def _seed_legacy_missing_channel_tables(engine) -> None:
@@ -133,14 +112,6 @@ async def _seed_legacy_missing_channel_tables(engine) -> None:
             "channel_conversations",
             "channel_oauth_states",
             "channel_connections",
-        ):
-            await conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
-        # See ``_seed_legacy_without_column`` for rationale: drop the
-        # post-baseline schedule tables so the legacy upgrade path runs.
-        for table in (
-            "schedule_subscriptions",
-            "schedule_runs",
-            "schedules",
         ):
             await conn.execute(sa.text(f"DROP TABLE IF EXISTS {table}"))
 
