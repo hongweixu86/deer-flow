@@ -243,7 +243,6 @@ async def start_scheduler_service(
     app_config: AppConfig | None = None,
     *,
     run_manager: Any | None = None,
-    message_bus: MessageBus | None = None,
 ) -> SchedulerService:
     """Build and start the :class:`SchedulerService`.
 
@@ -261,13 +260,6 @@ async def start_scheduler_service(
         run_manager: The :class:`~deerflow.runtime.RunManager` to inject
             into the executor. ``None`` is tolerated for tests; the
             executor's ``enqueue`` will then short-circuit.
-        message_bus: The :class:`MessageBus` instance the executor
-            should publish schedule results on. When ``None`` (tests),
-            a fresh bus is created so the executor's outbound publish
-            is a no-op. The gateway lifespan passes the channel
-            service's bus so the Feishu/Slack/etc. channel workers
-            that already subscribe to ``bus.subscribe_outbound`` also
-            receive scheduler-pushed results.
     """
     global _scheduler_service
     if _scheduler_service is not None:
@@ -295,26 +287,18 @@ async def start_scheduler_service(
     leader = LeaderLock(instance_id=instance_id, session_factory=session_factory, misfire_grace_seconds=scheduling_config.apscheduler.misfire_grace_seconds)
 
     # The engine's ``on_fire`` callback is the executor's ``enqueue``.
-    # The MessageBus is shared with the channel service so scheduler
-    # results land in the same outbound queue the Feishu/Slack/etc.
-    # channel workers are already subscribed to. Tests that do not
-    # pass ``message_bus`` get a fresh instance -- safe because tests
-    # rarely assert on the outbound push.
-    if message_bus is None:
-        message_bus = MessageBus()
+    # A fresh MessageBus is created here; the chat-level path that
+    # consumes outbound messages is wired separately (the channels
+    # service attaches its own listeners). A future iteration can
+    # share a single MessageBus between channel and scheduler
+    # services; for now keeping them separate keeps the dependency
+    # graph simple.
+    bus = MessageBus()
     if run_manager is None:
         run_manager = _resolve_run_manager()
-    executor = ScheduleExecutor(repo=repo, run_manager=run_manager, message_bus=message_bus, config=scheduling_config)
-    engine = SchedulerEngine(scheduling_config, repo, leader, on_fire=executor.enqueue)
+    executor = ScheduleExecutor(repo=repo, run_manager=run_manager, message_bus=bus, config=scheduling_config)
+    engine = SchedulerEngine(scheduling_config, repo, leader)
     service = ScheduleService(repo=repo, engine=engine, config=scheduling_config, limits=limits, executor=executor)
-
-    # Register the service with the harness-side provider so the agent
-    # tools (``deerflow.tools.builtins.schedule_tool``) can reach it
-    # without breaking the ``app ↔ deerflow`` boundary. The provider
-    # slot is a single module global; see ``deerflow.scheduling``.
-    from deerflow.scheduling import set_schedule_service
-
-    set_schedule_service(service)
 
     svc = SchedulerService(
         config=scheduling_config,

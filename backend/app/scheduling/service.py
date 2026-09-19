@@ -179,7 +179,7 @@ class ScheduleService:
         except Exception:
             logger.exception("[ScheduleService] engine.add_schedule failed for %s", row.id)
 
-        logger.info("[ScheduleService] create owner=%s id=%s kind=%s", current_user, row.id, kind)
+        logger.info("[ScheduleService] create owner=%s id=%s kind=%s", current_user, row.id, kind.value)
         return row
 
     async def get_for_viewer(

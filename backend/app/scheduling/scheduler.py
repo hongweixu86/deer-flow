@@ -61,44 +61,6 @@ logger = logging.getLogger(__name__)
 # the right job. Keep in sync with the test helpers.
 _JOB_ID_PREFIX = "sched:"
 
-# Module-level registry of the live engine. APScheduler serialises the
-# fire callback into the SQLAlchemyJobStore; a bound method (e.g.
-# ``executor.enqueue``) drags the executor instance along, which in
-# turn holds the LangGraph ``RunManager`` and a SQLAlchemy engine
-# whose ``create_engine`` closure contains local functions that
-# ``pickle`` cannot serialise. Routing through a module-level
-# coroutine that looks up the live engine keeps the persisted
-# callback stable across reloads.
-_current_engine: "SchedulerEngine | None" = None
-
-
-def _register_current_engine(engine: "SchedulerEngine | None") -> None:
-    global _current_engine
-    _current_engine = engine
-
-
-async def _dispatch_on_fire(schedule_id: str) -> None:
-    """APScheduler fire callback.
-
-    Module-level (and therefore picklable) wrapper that forwards to
-    whichever engine currently has the leader lock. The executor is
-    reached via ``engine._on_fire`` so the same indirection is used
-    whether the engine was wired with a real callback or fell back
-    to the no-op default.
-    """
-    engine = _current_engine
-    if engine is None:
-        logger.warning("[Scheduler] fire dropped: no live engine (schedule_id=%s)", schedule_id)
-        return
-    await engine._on_fire(schedule_id)
-
-
-# String form of the dispatch callback. APScheduler's ``add_job`` accepts
-# ``"module:callable"`` strings, which it imports at fire time. Using
-# the string form bypasses the pickle path entirely so the jobstore
-# can persist jobs across restarts without dragging live state in.
-_FIRE_CALLBACK = "app.scheduling.scheduler:_dispatch_on_fire"
-
 
 async def _noop_on_fire(schedule_id: str) -> None:
     """Default fire callback used when the executor has not been
@@ -157,11 +119,6 @@ class SchedulerEngine:
             timezone=self._config.timezone,
         )
 
-        # Register this engine as the live one so the module-level
-        # ``_dispatch_on_fire`` (the callback APScheduler actually
-        # serialises) can find the wired ``on_fire`` coroutine.
-        _register_current_engine(self)
-
         schedules = await self._repo.list_active()
         # Register jobs first, then write metadata so a failure in
         # the DB write does not leave APScheduler without a job.
@@ -190,11 +147,6 @@ class SchedulerEngine:
             # an event-loop teardown warning -- acceptable.
             self._sync_engine.dispose()
             self._sync_engine = None
-        # Clear the module-level dispatch slot so a future ``_current_engine``
-        # assignment (a fresh process, a new leader) does not see a
-        # reference to this stopped engine.
-        if _current_engine is self:
-            _register_current_engine(None)
 
     # ------------------------------------------------------------------
     # Mutators
@@ -279,21 +231,11 @@ class SchedulerEngine:
         sets the latter after the scheduler has processed the job at
         least once. Computing it here keeps the in-memory job
         registration and the DB write in sync.
-
-        The fire callback is registered by *string* reference
-        (``app.scheduling.scheduler:_dispatch_on_fire``) so APScheduler
-        does not need to pickle a bound method into the
-        ``SQLAlchemyJobStore`` -- that path breaks for ``executor.enqueue``
-        because the executor transitively holds a reference to
-        SQLAlchemy's ``create_engine`` whose local ``connect`` helper
-        is not picklable. The module-level dispatcher then forwards
-        to ``self._on_fire`` (which may be the executor's enqueue or
-        the noop default) at fire time.
         """
         assert self._sched is not None, "_register_in_apscheduler called before start()"
         trigger = self._build_trigger(s)
         self._sched.add_job(
-            _FIRE_CALLBACK,
+            self._on_fire,
             trigger=trigger,
             args=[s.id],
             id=self._job_id(s.id),

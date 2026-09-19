@@ -130,7 +130,7 @@ class ScheduleRepository:
             session.add(row)
             await session.commit()
             await session.refresh(row)
-        logger.info("schedule created: id=%s owner=%s kind=%s", row.id, owner_user_id, kind)
+        logger.info("schedule created: id=%s owner=%s kind=%s", row.id, owner_user_id, kind.value)
         return row
 
     async def get(self, schedule_id: str) -> Schedule | None:

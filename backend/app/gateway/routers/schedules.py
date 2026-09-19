@@ -27,8 +27,6 @@ from pydantic import BaseModel, Field
 
 from app.scheduling.service import ScheduleService
 from app.scheduling.lifespan import get_scheduler_service
-from deerflow.persistence.channel_connections.sql import ChannelConnectionRepository
-from deerflow.persistence.engine import get_session_factory
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/schedules", tags=["schedules"])
@@ -107,23 +105,7 @@ def _get_engine(request: Request):
 
 
 def _get_connection_repo(request: Request):
-    """Resolve (and lazily build) the ``ChannelConnectionRepository``.
-
-    Mirrors the lazy-init pattern from
-    ``app.gateway.routers.channel_connections._get_repository`` so a
-    test fixture that never wired the repo can still create one on
-    first use via ``get_session_factory()`` rather than 403'ing
-    with "Connection registry unavailable".
-    """
-    repo = getattr(request.app.state, "channel_connection_repo", None)
-    if isinstance(repo, ChannelConnectionRepository):
-        return repo
-    sf = get_session_factory()
-    if sf is None:
-        raise HTTPException(status_code=503, detail="Channel connection persistence is not available")
-    repo = ChannelConnectionRepository(sf)
-    request.app.state.channel_connection_repo = repo
-    return repo
+    return getattr(request.app.state, "channel_connection_repo", None)
 
 
 async def _verify_target_connection(target: TargetPayload, current_user_id: str, request: Request) -> None:
