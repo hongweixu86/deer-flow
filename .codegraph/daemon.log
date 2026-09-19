@@ -1,0 +1,47 @@
+[CodeGraph] v1.6.0 is available (this server is running v1.5.0). Update with `codegraph upgrade`.
+[CodeGraph daemon] Listening on /home/xhw/code/deer-flow/.codegraph/daemon.sock (pid 1467006, v1.5.0). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Query pool: up to 3 worker thread(s) for concurrent reads.
+[CodeGraph MCP] Auto-synced 1 file(s) in 492ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 280ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 205ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 218ms
+[CodeGraph daemon] Shutting down (SIGTERM; clients=1).
+[CodeGraph daemon] Another daemon (pid 1603700) already holds the lock; exiting.
+[CodeGraph daemon] Listening on /home/xhw/code/deer-flow/.codegraph/daemon.sock (pid 1603700, v1.5.0). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Query pool: up to 3 worker thread(s) for concurrent reads.
+[CodeGraph] v1.6.0 is available (this server is running v1.5.0). Update with `codegraph upgrade`.
+[CodeGraph daemon] Shutting down (idle timeout; clients=0).
+[CodeGraph daemon] Another daemon (pid 26021) already holds the lock; exiting.
+[CodeGraph daemon] Listening on /home/xhw/code/deer-flow/.codegraph/daemon.sock (pid 26021, v1.5.0). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Query pool: up to 3 worker thread(s) for concurrent reads.
+[CodeGraph] v1.6.0 is available (this server is running v1.5.0). Update with `codegraph upgrade`.
+[CodeGraph daemon] Shutting down (inactivity backstop; clients=1).
+[CodeGraph daemon] Another daemon (pid 5649) already holds the lock; exiting.
+[CodeGraph] v1.6.0 is available (this server is running v1.5.0). Update with `codegraph upgrade`.
+[CodeGraph daemon] Listening on /home/xhw/code/deer-flow/.codegraph/daemon.sock (pid 5649, v1.5.0). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Query pool: up to 3 worker thread(s) for concurrent reads.
+[CodeGraph MCP] Auto-synced 1 file(s) in 1622ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 610ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 172ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 164ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 1036ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 360ms
+[CodeGraph daemon] Shutting down (SIGTERM; clients=1).
+[CodeGraph daemon] Another daemon (pid 133894) already holds the lock; exiting.
+[CodeGraph daemon] Listening on /home/xhw/code/deer-flow/.codegraph/daemon.sock (pid 133894, v1.5.0). Idle timeout 300000ms.
+[CodeGraph MCP] File watcher active — graph will auto-sync on changes
+[CodeGraph MCP] Query pool: up to 3 worker thread(s) for concurrent reads.
+[CodeGraph] v1.6.0 is available (this server is running v1.5.0). Update with `codegraph upgrade`.
+[CodeGraph MCP] Caught up 1 file(s) changed since last run
+[CodeGraph MCP] Auto-synced 1 file(s) in 162ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 111ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 102ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 86ms
+[CodeGraph MCP] Auto-synced 1 file(s) in 111ms
+[CodeGraph MCP] Auto-synced 3 file(s) in 153ms
+[CodeGraph MCP] Auto-synced 3 file(s) in 143ms
+[CodeGraph daemon] Shutting down (idle timeout; clients=0).
