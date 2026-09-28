@@ -67,3 +67,5 @@ config.yaml.bak
 .offline-output/
 .offline-deploy-output/
 docker/offline/seed-wheels/*.whl
+.codegraph/codegraph.db
+.codegraph/daemon.log
