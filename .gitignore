@@ -69,3 +69,7 @@ config.yaml.bak
 
 # Monocle agent-observability trace output (local file exporter)
 .monocle/
+.codegraph/codegraph.db
+.codegraph/codegraph.db-shm
+.codegraph/codegraph.lock
+.codegraph/daemon.pid
