@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "ragflow": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--with", "mcp<2.0",
+        "ragflow-mcp-server",
+        "--api-key",
+        "ragflow-ALX4o7JFLB9WjYw5I8Mij3w734y9OSpygeqaEVwz6Fw",
+        "--base-url",
+        "http://host.docker.internal:9380"
+      ],
+      "description": "RAGFlow 检索增强生成服务：用于知识库检索、文档上传与管理、数据集维护"
+    }
+  },
+  "skills":{}
+}
