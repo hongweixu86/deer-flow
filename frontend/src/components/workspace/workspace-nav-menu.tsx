@@ -88,9 +88,7 @@ export function WorkspaceNavMenu() {
                     <Settings2Icon />
                     {t.common.settings}
                   </DropdownMenuItem>
-                  
                 </DropdownMenuGroup>
-               
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

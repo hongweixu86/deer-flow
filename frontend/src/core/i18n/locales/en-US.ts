@@ -21,7 +21,8 @@ export const enUS: Translations = {
     integrationSkills: "From plugins",
     sharedSkills: "Shared skills",
     title: "Capability Center",
-    description: "Add tools and skills that help Digital Employee work your way.",
+    description:
+      "Add tools and skills that help Digital Employee work your way.",
     plugins: "Plugins",
     skills: "Skills",
     searchPlugins: "Search plugins by name or purpose",
@@ -543,7 +544,8 @@ export const enUS: Translations = {
       `Chat notification attempt ${attempt} failed; Digital Employee will retry with backoff.`,
     notificationStopped:
       "Chat notification delivery stopped after repeated or permanent failures.",
-    trackingDegraded: "Status checks are delayed; Digital Employee is still retrying.",
+    trackingDegraded:
+      "Status checks are delayed; Digital Employee is still retrying.",
     viewDetails: "View details",
     hideDetails: "Hide details",
     detailsFailed: "Couldn't load task details",
@@ -956,7 +958,8 @@ export const enUS: Translations = {
       slack: "Slack workspace messages and mentions.",
       discord: "Discord server messages through your Digital Employee bot.",
       feishu: "Feishu and Lark messages through your Digital Employee app.",
-      dingtalk: "DingTalk Stream Push messages through your Digital Employee bot.",
+      dingtalk:
+        "DingTalk Stream Push messages through your Digital Employee bot.",
       wechat: "WeChat iLink messages through your Digital Employee bot.",
       wecom: "WeCom messages through your Digital Employee AI bot.",
     },
@@ -1001,7 +1004,8 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to Digital Employee",
+    skillInstallTooltip:
+      "Install skill and make it available to Digital Employee",
     browserNavigate: (url: string) => `Open ${url} in browser`,
     browserNavigateGeneric: "Open page in browser",
     browserClick: "Click element in browser",

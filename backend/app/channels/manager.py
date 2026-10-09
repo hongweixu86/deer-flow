@@ -2638,8 +2638,7 @@ class ChannelManager:
                         # correlate "the user only saw the final PATCH" with how much
                         # text was swallowed here.
                         logger.debug(
-                            "[Manager][stream-diag] throttled intermediate: thread_id=%s channel=%s "
-                            "new_chars=%d threshold=%d interval=%.2fs latest_len=%d last_pub_len=%d",
+                            "[Manager][stream-diag] throttled intermediate: thread_id=%s channel=%s new_chars=%d threshold=%d interval=%.2fs latest_len=%d last_pub_len=%d",
                             thread_id,
                             msg.channel_name,
                             new_chars,
@@ -2670,8 +2669,7 @@ class ChannelManager:
                 # DIAG: every published intermediate PATCH so the Feishu running-card
                 # log can be cross-referenced by (channel, thread_id) + length.
                 logger.debug(
-                    "[Manager][stream-diag] published intermediate: thread_id=%s channel=%s "
-                    "text_len=%d last_published_len=%d",
+                    "[Manager][stream-diag] published intermediate: thread_id=%s channel=%s text_len=%d last_published_len=%d",
                     thread_id,
                     msg.channel_name,
                     len(latest_text),
@@ -2716,16 +2714,12 @@ class ChannelManager:
             if isinstance(last_msg_content, str):
                 last_msg_content_len = len(last_msg_content)
             elif isinstance(last_msg_content, list):
-                last_msg_content_len = sum(
-                    len(b.get("text", "")) for b in last_msg_content if isinstance(b, dict) and b.get("type") == "text"
-                )
+                last_msg_content_len = sum(len(b.get("text", "")) for b in last_msg_content if isinstance(b, dict) and b.get("type") == "text")
             else:
                 last_msg_content_len = -1
             truncated = len(latest_text) > len(response_text)
             logger.info(
-                "[Manager][stream-diag] final publish: thread_id=%s channel=%s "
-                "last_values=%s last_values_msg_count=%d last_msg_type=%s last_msg_content_len=%d "
-                "latest_len=%d response_len=%d truncated=%s stream_error=%r",
+                "[Manager][stream-diag] final publish: thread_id=%s channel=%s last_values=%s last_values_msg_count=%d last_msg_type=%s last_msg_content_len=%d latest_len=%d response_len=%d truncated=%s stream_error=%r",
                 thread_id,
                 msg.channel_name,
                 "set" if last_values is not None else "None",
