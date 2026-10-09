@@ -1416,9 +1416,21 @@ def _ensure_managed_sandbox_lark_cli(version: str) -> Path:
         return _ensure_managed_sandbox_lark_cli_locked(tag, target, parent)
 
 
+def _make_lark_cli_sandbox_runtime_traversable(target: Path) -> None:
+    """Keep the runtime root usable for the sandbox's non-root exec user.
+
+    The tree is staged with ``tempfile.mkdtemp`` (0o700), but AIO sandboxes
+    bind-mount it read-only and execute commands as a non-root user, so a
+    0o700 root makes ``lark-cli`` invisible despite the injected PATH.
+    """
+    if os.name != "nt":
+        os.chmod(target, 0o755)
+
+
 def _ensure_managed_sandbox_lark_cli_locked(tag: str, target: Path, parent: Path) -> Path:
     manifest = _read_json_object_file(target / LARK_CLI_RUNTIME_MANIFEST_FILE)
     if manifest and manifest.get("version") == tag:
+        _make_lark_cli_sandbox_runtime_traversable(target)
         _validate_lark_cli_sandbox_runtime(target)
         return target
 
@@ -1453,6 +1465,7 @@ def _ensure_managed_sandbox_lark_cli_locked(tag: str, target: Path, parent: Path
                 shutil.rmtree(backup, ignore_errors=True)
             target.rename(backup)
         staging.rename(target)
+        _make_lark_cli_sandbox_runtime_traversable(target)
         if backup is not None:
             shutil.rmtree(backup, ignore_errors=True)
         return target
@@ -2095,6 +2108,23 @@ def complete_lark_auth(
         raise ValueError("device_code is required.")
     if not LARK_AUTH_COMPLETE_MIN_WAIT_SECONDS <= wait_timeout_seconds <= LARK_AUTH_COMPLETE_MAX_WAIT_SECONDS:
         raise ValueError(f"wait_timeout_seconds must be between {LARK_AUTH_COMPLETE_MIN_WAIT_SECONDS} and {LARK_AUTH_COMPLETE_MAX_WAIT_SECONDS}.")
+
+    # Idempotency guard: the frontend's automatic retry polls can race the
+    # Lark `/token` endpoint consuming the device_code. Once Lark has handed
+    # out tokens, replaying `lark-cli auth login --device-code` against the
+    # same code surfaces "authorization failed: The device_code is invalid"
+    # to the UI even though the user already authorized. Verify auth state
+    # first and short-circuit if the user is already live-authenticated.
+    precheck = probe_lark_auth(user_id, verify=True)
+    if precheck.status == "authenticated":
+        with _lark_credential_lock(user_id):
+            _require_lark_flow_generation_locked(user_id, generation)
+            status = get_lark_integration_status(user_id, config, verify_auth=True)
+        return LarkAuthCompleteResult(
+            success=status.auth.status == "authenticated",
+            status=status,
+            message="Lark/Feishu authorization completed." if status.auth.status == "authenticated" else (status.auth.message or "Lark/Feishu authorization status is still pending."),
+        )
 
     with _lark_credential_lock(user_id):
         _require_lark_flow_generation_locked(user_id, generation)

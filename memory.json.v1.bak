@@ -1,0 +1,837 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-10-04T15:55:56.457917Z",
+  "user": {
+    "workContext": {
+      "summary": "User works in SRE/Ops-related roles involving gateway and Nginx infrastructure, with ongoing responsibility for operational monitoring, log analysis, and incident response workflows in a power-grid dispatch environment (调度数据网, MSTP, WAMS, 钟山电厂). Now designing and building a multi-agent + skill ecosystem with named digital employees (天璇数字员工 for cross-domain coordination/documents, yunxin/云心 for on-duty SRE response), operationalizing recurring workflows via named custom skills (alarm_analysis), producing executive deliverables (PPT briefings) for leadership reporting, actively integrating Feishu (Lark) message cards as the HITL confirmation transport, surveying the local MCP-style service surface (with claude-to-deerflow as the gateway bridge), exploring RAGFlow as a knowledge-base/MCP query transport (test-kb with README_zh.md), evaluating DeerFlow 2.0 installation paths (Docker + 本地开发), and exploring business-data analytics (regional revenue from customers/orders schema).",
+      "updatedAt": "2026-10-04T15:55:56.251851Z"
+    },
+    "personalContext": {
+      "summary": "User communicates in Simplified Chinese (Mandarin). User is building/curating named digital agent personas (天璇, yunxin) and named skills (alarm_analysis) with defined SOUL.md/spec files, composing leadership-facing PPT briefings via the ppt-generation skill, extending HITL confirmation to Feishu message cards with callback buttons (✅ 确认 / 🔧 调整 / ⏸ 暂缓), prefers 'minimal-swiss' style for executive deliverables, and explicitly requests HITL confirmation on style/structural/high-risk/privilege-escalation decisions. User has maturing interest in MCP-style service architectures, RAG-backed knowledge retrieval, orchestration frameworks (DeerFlow), and business analytics — issuing cross-domain queries (regional revenue + DeerFlow installation) in the same session.",
+      "updatedAt": "2026-10-04T15:55:56.251851Z"
+    },
+    "topOfMind": {
+      "summary": "On 2026-10-04 (Sunday), the user continued two parallel threads: (1) BUSINESS-ANALYTICS — re-confirmed the regional revenue breakdown (华北 1375.89 / 华东 1196.65 / 华南 480.92 / 西南 341.68 USD, total 3395.14 USD across 14 orders / 7 customers, 华北+华东 = 75.8% concentration) and was offered 3 drill-down options (月度趋势 / Top 客户 / pending-cancelled 占比) — none yet selected. (2) DEERFLOW INSTALLATION VIA RAGFLOW ✅ COMPLETED — the user issued '知识库中查询 deerflow 的安装方式' and the agent successfully retrieved the full DeerFlow installation guide from README_zh.md in the test-kb dataset (id b54b4696637047eaa22468902800fe70, document id c371c145143b4fc0a535e2d9dbdc29f4, 40 chunks, 7111 tokens, 28936 bytes), delivering a complete structured guide covering 前置准备 (git clone + make config + .env API keys) + 方式一 Docker (make docker-init/start, make up/down, port 2026) + 方式二 本地开发 (make check/install/setup-sandbox/dev, requires Node.js 22+ / pnpm / uv / nginx, Git Bash on Windows) + 访问方式 (http://localhost:2026 + /api/langgraph/* via nginx rewrite). CRITICAL UPDATE: this successful RAGFlow retrieval CONTRADICTS the prior 2026-10-01 'NoneType' bug diagnosis — the agent has now proven RAGFlow MCP retrieval works end-to-end on this query, so the earlier 'deterministic server-side bug' hypothesis needs re-validation. The 5th HITL pending decision (sudo+docker-exec authorization for RAGFlow debugging) remains UNRESOLVED for ~3 calendar days, and the 4 original 待确认事项 (6 页 PPT, 采样窗口 A vs B, 持久化目录树, 飞书凭据) remain entirely unresolved (~13 calendar days). 钟山电厂 3-channel long挂 (~183 天) remains the primary long-term P2 monitoring item.",
+      "updatedAt": "2026-10-04T15:55:56.251851Z"
+    }
+  },
+  "history": {
+    "recentMonths": {
+      "summary": "Across 2026-09-15 through 2026-10-04 (~three calendar weeks), the user repeatedly invoked the recurring alert analysis report prompt (now invocable via 4-character '告警分析报告' minimal imperative), transitioned from data-unavailability caveats to real operational data (9 alarms from 总调 4 + 广东中调 5 APIs via http://127.0.0.1:3010/api/alarms?source=total|guangdong). On 2026-09-17, the user designed yunxin (云心) for SRE on-duty assistance with SOUL.md at /mnt/user-data/workspace/yunxin/SOUL.md. On 2026-09-21, the user invoked the named 'alarm_analysis' skill, requested a 6-page minimal-swiss PPT, formalized HITL expectations, opened the Feishu Interactive Card workstream, and approved the 3-button (✅/🔧/⏸) callback design. Across 2026-09-20 → 2026-10-04, the user opened with '你好' greetings on 8+ separate days — 天璇 responded with structured 3-tier status boards (✅/⏳/🔴) plus P0/P1/P2 action menus. On 2026-09-29, the user issued '你是谁？' and 'deer-flow 是什么？' (6-component DeerFlow breakdown). On 2026-10-01, the user issued 5 meta-probes — MCP service inventory (22 services), DeerFlow installation guide (Python ≥3.12 / uv / Docker / WSL2), built-in tool inventory (14 tools), AND TWO RAGFlow MCP probes that localized a 'deterministic server-side NoneType bug' in the chat_answer path. The afternoon session then attempted path-A server-side debugging but uncovered an infrastructure access wall: /opt/ragflow 'Permission denied', HTTP 127.0.0.1:3010 'Connection refused', no sudo/docker exec — forcing a 3-option HITL escalation. On 2026-10-04 (Sunday), the user continued two threads: (a) BUSINESS-ANALYTICS with '各个区域的营收多少？' — agent queried customers/orders schema, delivered 4-region revenue table (3395.14 USD total, 14 orders, 7 customers, 75.8% 华北+华东 concentration) plus drill-down invitations; (b) KNOWLEDGE RETRIEVAL with '知识库中查询 deerflow 的安装方式' — agent successfully retrieved the full DeerFlow 2.0 installation guide from README_zh.md in RAGFlow's test-kb dataset (40 chunks, 7111 tokens), covering 前置准备 / Docker 方式 / 本地开发方式 / 访问方式, delivering a complete actionable guide. This successful retrieval is significant because it suggests RAGFlow's retrieval/reading capabilities work even though the prior chat_answer path was reported as broken — the prior 'deterministic NoneType bug' diagnosis may need re-validation (perhaps the bug only affects chat_answer and not retrieval), or perhaps the earlier diagnosis was incorrect. The trajectory has expanded from SRE/MCP orchestration into business-data analytics AND knowledge-base-backed doc-grounded investigation, with the full layered capability map (tools → skills → MCP bridges → RAG services → DeerFlow orchestration → business-analytics data sources) now actively exercised.",
+      "updatedAt": "2026-10-04T15:55:56.251851Z"
+    },
+    "earlierContext": {
+      "summary": "",
+      "updatedAt": ""
+    },
+    "longTermBackground": {
+      "summary": "User is an SRE/Ops practitioner working with gateway, Nginx, and dispatch/power-grid (调度数据网, MSTP, WAMS, 钟山电厂) infrastructure, with established workflow patterns around log-based alert analysis (ERROR/WARN spike detection, error pattern clustering, risk attribution, 未复归 vs 已复归 alarm classification). The user communicates in Simplified Chinese, prefers concise direct markdown reports without clarification questions, and is actively building a multi-agent + skill ecosystem with named personas (天璇数字员工, yunxin/云心) and named skills (alarm_analysis), each with defined SOUL.md/spec files, distinct operational scopes, and explicit coordination boundaries. The user has a consistent behavior pattern of opening sessions with casual '你好' greetings on weekday mornings and weekends, expecting 天璇数字员工 to autonomously identify next steps and proactively suggest concrete tasks with structured status boards (3-tier ✅/⏳/🔴 + priority menu), progressively migrating recurring prompts into named skills while extending outputs downstream into leadership-facing artifacts (PPT) using minimal-swiss executive style. User has formalized HITL confirmation expectations and committed to Feishu Interactive Card + 自建应用 Open API as the notification transport — with ask_clarification being the in-session HITL tool, complemented by Feishu as the cross-channel HITL tool. User has demonstrated a methodical, evidence-driven debugging pattern: when investigating failures (e.g., the RAGFlow 'NoneType' bug), they systematically rule out environmental/query-level causes via controlled probes before localizing root cause to the server side. However, on 2026-10-04 a new data point (successful RAGFlow retrieval of README_zh.md content) challenges the prior 'deterministic server-side NoneType bug' diagnosis — suggesting the bug may be narrower than previously concluded (perhaps only affecting chat_answer, not retrieval), or that re-validation is needed.",
+      "updatedAt": "2026-10-04T15:55:56.251851Z"
+    }
+  },
+  "facts": [
+    {
+      "id": "fact_883fb509",
+      "content": "User communicates in Simplified Chinese (Mandarin)",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-15T16:20:37.185479Z",
+      "source": "10dad64e-9c41-437b-a4ee-65cbc377b76b"
+    },
+    {
+      "id": "fact_8912adaa",
+      "content": "The agent persona is '天璇数字员工' (Tianxuan Digital Employee), a digital assistant identity used in user interactions",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-16T00:23:16.909285Z",
+      "source": "abc9ce98-b5ab-4ae3-9748-ae660c0f2ea8"
+    },
+    {
+      "id": "fact_34d3837c",
+      "content": "On 2026-09-18 (Friday), the user issued the verbatim identical alert report prompt, with the system date advancing from 2026-09-16 (Wednesday) through 2026-09-17 (Thursday) to 2026-09-18 (Friday) across consecutive invocations in the same session, extending the recurring routine to four consecutive calendar days.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T16:01:04.800788Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_9921de54",
+      "content": "The recurring alert analysis report prompt has now been observed verbatim identical across at least 8 invocations spanning 2026-09-15, 2026-09-16 (×2), 2026-09-17 (×3+), and 2026-09-18 (×2), with the system date advancing across four consecutive calendar days, fully establishing it as a multi-day standing operational routine.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T16:01:04.800788Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_1e4aa7bb",
+      "content": "On 2026-09-18 (Friday), the user issued the verbatim identical alert report prompt twice within the same session (report period 过去一小时（截至 2026-09-18）), bringing the total observed invocations to at least 10 across 2026-09-15, 2026-09-16 (×2), 2026-09-17 (×3+), and 2026-09-18 (×3), with the system date advancing across four consecutive business days.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:00:39.952265Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_a9a3bb5e",
+      "content": "Across the 2026-09-16 → 2026-09-17 → 2026-09-18 window, the agent's report format has remained byte-stable (other than the date token): header with report period and data sources → Section 一 数据可及性说明 with 2-row log paths table → Section 二 结论 with '暂无异常（数据不可用说明）' and explicit caveat → Section 三 建议的后续动作 with three concrete next steps (upload logs, provide thresholds/baseline, re-run) → footer with report generation timestamp. The report period token consistently uses '过去一小时（截至 YYYY-MM-DD）'.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:00:39.952265Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_baf607be",
+      "content": "User designed a new digital agent named 'yunxin' (云心) on 2026-09-17, primarily serving SRE/operations on-duty assistance (运行值班助手)",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:07:32.200714Z",
+      "source": "8eb0fb0a-b51f-4351-8ea9-eeffb529fc24"
+    },
+    {
+      "id": "fact_5c3e5383",
+      "content": "User specified yunxin's communication style as '务实高效、行动派' (pragmatic, efficient, action-oriented)",
+      "category": "preference",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:07:32.200714Z",
+      "source": "8eb0fb0a-b51f-4351-8ea9-eeffb529fc24"
+    },
+    {
+      "id": "fact_b2a1e0b8",
+      "content": "User positioned yunxin as '并列独立' (parallel and independent) from 天璇, not subordinate or reporting to 天璇",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:07:32.200714Z",
+      "source": "8eb0fb0a-b51f-4351-8ea9-eeffb529fc24"
+    },
+    {
+      "id": "fact_d6126271",
+      "content": "On 2026-09-17, after yunxin's initial Chinese SOUL.md was drafted, the user issued an explicit save confirmation requesting: (a) generate a concise English initial SOUL.md making reasonable assumptions where details were missing, and (b) directly call setup_agent without requesting further confirmation.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-17T17:08:51.073907Z",
+      "source": "8eb0fb0a-b51f-4351-8ea9-eeffb529fc24"
+    },
+    {
+      "id": "fact_590663f2",
+      "content": "On 2026-09-20 (Sunday), the user opened the session with a simple '你好' greeting; the agent ('天璇数字员工') responded by stating its role (cross-domain coordination and document organization, 跨域协调与文档整理), acknowledging the weekend date, and proactively offering assistance across multiple domains (routine document organization, cross-domain task coordination, other matters).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-20T02:05:15.374446Z",
+      "source": "fbfad714-8abf-4410-9333-afd9586b9dca"
+    },
+    {
+      "id": "fact_c8c6bddb",
+      "content": "On 2026-09-21 (Monday morning), the user opened the session with a simple '你好' greeting; the agent ('天璇数字员工') responded by acknowledging the new week (新一周开始 / 周一早), restating its cross-domain coordination and document organization role, and proactively offering concrete task categories: 昨日值班记录 (yesterday's on-duty records), 周报素材 (weekly report materials), 跨域任务对接 (cross-domain task coordination), and archiving yunxin's 处置轨迹 (handling trail) into 天璇.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T02:46:08.008987Z",
+      "source": "e414587d-39d1-450c-814f-5b9d542f2173"
+    },
+    {
+      "id": "fact_f112fbd1",
+      "content": "On 2026-09-21 (Monday), after a casual '你好' greeting and 天璇数字员工's proactive task-list response, the user issued the next routine '生成告警分析报告' prompt; the agent produced the standard template-driven report and framed it as '周一值班首日，待数据接入后恢复常态分析', explicitly aligning the alert-report routine with yunxin's on-duty 值班 role.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:07:53.495042Z",
+      "source": "49945e2f-3c12-484c-be9f-5c85540366f8"
+    },
+    {
+      "id": "fact_858efbe0",
+      "content": "On 2026-09-21, the user issued a new meta-level discovery request: '列出所有技能' (list all skills), expanding scope beyond the recurring alert-report routine and agent persona design to inventory the platform's full skill/agent capability surface.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:09:09.859036Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_286cd532",
+      "content": "Built-in 'music-generation' skill uses the MiniMax music API — directly confirming the underlying model provider/brand is MiniMax (consistent with the system identity 'MiniMax-M3').",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:09:09.859036Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_85871319",
+      "content": "On 2026-09-21, the user issued the imperative '调用 alarm_analysis 技能生成告警分析报告' — for the first time invoking a named skill by name rather than using the prior verbose imperative prompt. alarm_analysis is the user's 1 custom skill (the '+1' in the 22+1 skill enumeration).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:12:37.253384Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_dee46329",
+      "content": "The 2026-09-21 alarm_analysis report covers 钟山电厂 (Zhongshan Power Plant) with 3 long-standing non-recovered (未复归) alarms: 调度数据网 A 通道, B 通道, MSTP 通道 — all started simultaneously at 2026-03-31 14:43, all marked '基建未投' (construction not commissioned), all flagged as the week's primary follow-up item.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:12:37.253384Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_9161f511",
+      "content": "On 2026-09-21, the user requested '帮我基于告警分析报告生成一个简要PPT用于给领导汇报' — introducing a new deliverable type: concise executive PPT briefings derived from operational alert reports for 领导 (leadership) reporting.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:17:01.085152Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_1dd4fa37",
+      "content": "On 2026-09-21, when the user resumed the session with '完成了没？', the assistant reported that the workspace and output directory were both empty — artifacts produced in prior turns (the alarm report and the PPT) were NOT preserved across sessions, forcing the user to either re-run alarm_analysis or paste existing report text.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:35:34.281746Z",
+      "source": "ee7b67d6-810f-4113-b64a-72941c6609a3"
+    },
+    {
+      "id": "fact_bca99440",
+      "content": "The 2026-09-21 alarm_analysis report pulled data from two parallel APIs: 总调 `http://127.0.0.1:3010/api/alarms?source=total` (4 records) and 广东中调 `http://127.0.0.1:3010/api/alarms?source=guangdong` (5 records) — 9 alarms total.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:36:09.965188Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_fba2fa15",
+      "content": "The 2026-09-21 alarm_analysis report covers 钟山电厂 with 3 long-standing 未复归 alarms (A 通道, B 通道, MSTP 通道, all '基建未投', long挂 >24h) plus 6 已复归 alarms (4 调峰时段数据跳变 + 2 厂站 WAMS 通道告警).",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:36:09.965188Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_e989873c",
+      "content": "The ppt-generation skill is located at `/mnt/skills/public/ppt-generation/SKILL.md` and image-generation skill is at `/mnt/skills/public/image-generation/` with script `/mnt/skills/public/image-generation/scripts/generate.py`.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:36:09.965188Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_db8c262d",
+      "content": "CORRECTION: When invoking the image-generation skill, the correct path is to call `/mnt/skills/public/image-generation/scripts/generate.py` which auto-reads `MINIMAX_API_KEY` from env. The agent previously made the mistake of bypassing the script and POSTing directly to `https://api.minimaxi.com/v1/image_generation` without the API key, resulting in `status_code: 1004 login fail: Please carry the API secret...`. Source error: directly calling API endpoint without env var auth instead of using the skill's wrapper script.",
+      "category": "correction",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:36:09.965188Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_a1fec0ef",
+      "content": "The MiniMax image-generation API requires the `MINIMAX_API_KEY` environment variable for authentication; the script wrapper at `/mnt/skills/public/image-generation/scripts/generate.py` handles this automatically.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T06:36:09.965188Z",
+      "source": "064a7a5d-2167-456a-bb54-d1ec941778d4"
+    },
+    {
+      "id": "fact_3628c29f",
+      "content": "On 2026-09-21 (continued from earlier same day), the user re-issued the short imperative '生成告警分析报告' — the alarm_analysis skill re-ran successfully and produced a parallel 9-alarm report (总调 4 + 广东中调 5), saved to `/mnt/user-data/outputs/alarm/report/告警分析报告.md`, indicating the alert-analysis routine is now in steady-state same-day re-runnable mode.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T07:03:23.336283Z",
+      "source": "001ee172-7702-4121-8803-785bd5707c3a"
+    },
+    {
+      "id": "fact_31939550",
+      "content": "On 2026-09-21 (third same-day run), the user issued the minimal imperative '告警分析报告' and the agent re-ran alarm_analysis successfully, producing a steady-state 9-alarm report (总调 4 + 广东中调 5) with the same 钟山电厂 long-standing 未复归 channels (A/B/MSTP, since 2026-03-31 14:43, now ~174 天, '基建未投') plus 6 recovered alarms — confirming the routine is now invocable via a single 4-character imperative rather than the prior verbose template.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T07:27:32.752268Z",
+      "source": "21f20872-41cb-4cc6-b640-68305e60cae3"
+    },
+    {
+      "id": "fact_baadce3e",
+      "content": "The assistant reiterated the correct image-generation path `/mnt/skills/public/image-generation/scripts/generate.py` (auto-reads MINIMAX_API_KEY from env) when re-surfacing the PPT pipeline status, reinforcing the prior turn's correction against direct API POST to `https://api.minimaxi.com/v1/image_generation`.",
+      "category": "correction",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T07:27:32.752268Z",
+      "source": "21f20872-41cb-4cc6-b640-68305e60cae3",
+      "sourceError": "Previous run attempted direct POST to https://api.minimaxi.com/v1/image_generation without API key, got status_code: 1004 login fail."
+    },
+    {
+      "id": "fact_34470b07",
+      "content": "The session-persistence limitation was reaffirmed: artifacts (alarm report, PPT outputs) are NOT preserved across sessions, requiring either re-running skills or explicit persistent storage to /mnt/user-data/outputs/ subtrees.",
+      "category": "constraint",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T07:27:32.752268Z",
+      "source": "21f20872-41cb-4cc6-b640-68305e60cae3"
+    },
+    {
+      "id": "fact_57d97d2b",
+      "content": "On 2026-09-21, the user explicitly asked '你好，你支持人在回路不？如果有需要向我确定的没？' — formally requesting human-in-the-loop confirmation behavior from the agent. The agent (天璇数字员工) confirmed HITL is the standard workflow (澄清 → 规划 → 执行) and re-surfaced all three accumulated 待确认事项 as a consolidated confirmation block.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:13:16.323000Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_b3bfff0d",
+      "content": "天璇数字员工's stated standard workflow is '澄清 → 规划 → 执行' (clarify → plan → execute) with explicit HITL on style/structural/high-risk decisions — confirmed by the agent on 2026-09-21 in response to the user's HITL request.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:13:16.323000Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_83a073f6",
+      "content": "User wants the agent to surface style/structural/high-risk decisions back to them (人在回路 / HITL) rather than autonomously proceeding — confirmed on 2026-09-21 via explicit question.",
+      "category": "preference",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:13:16.323000Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_54377e79",
+      "content": "On 2026-09-21, after the agent surfaced the three consolidated 待确认事项, the user asked '你可以给我推送飞书的消息卡片进行确认不？' — opening a new workstream to integrate Feishu (Lark) message cards as the human-in-the-loop confirmation notification mechanism, beyond in-chat confirmation.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:18:34.363040Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_409c31df",
+      "content": "On 2026-09-21, user confirmed the Feishu HITL integration architecture via explicit decision statement: '走 Interactive Card（含按钮回调）才能真正实现\"人在回路\" —— 卡片上直接放「✅ 确认」「🔧 调整」「⏸ 暂缓」按钮，领导点一下我就知道结果。Webhook 卡片只能看，不能回。' — finalizing Interactive Card + 自建应用 Open API path (rejecting Webhook because its cards are view-only).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:23:17.282595Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_ecae57e6",
+      "content": "The Feishu Interactive Card HITL design uses 3 callback buttons: ✅ 确认 (confirm), 🔧 调整 (adjust), ⏸ 暂缓 (pause) — designed so leadership can click directly in the card to signal intent without typing.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-21T16:23:17.282595Z",
+      "source": "a9692aa8-0f7c-411e-a9f1-4537f7a38231"
+    },
+    {
+      "id": "fact_8a385a42",
+      "content": "On 2026-09-22 (Tuesday morning), the user opened the session with a simple '你好' greeting — extending the established casual-greeting pattern to a third day across 2026-09-20 (Sunday), 2026-09-21 (Monday), and 2026-09-22 (Tuesday), confirming 天璇数字员工's stable proactive task-listing behavior across weekends and weekday mornings.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T05:00:35.872226Z",
+      "source": "6302376b-b7f4-4b53-a47a-a21ccd833020"
+    },
+    {
+      "id": "fact_5bab1210",
+      "content": "On 2026-09-28 (Monday morning 09:28), the user opened the session with a casual '你好' greeting — extending the established casual-greeting pattern across 2026-09-20 (Sunday), 2026-09-21 (Monday), 2026-09-22 (Tuesday), and now 2026-09-28 (Monday), confirming the recurring Monday-morning greeting pattern with 1-week gap tolerance.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T05:28:57.776393Z",
+      "source": "6302376b-b7f4-4b53-a47a-a21ccd833020"
+    },
+    {
+      "id": "fact_351342eb",
+      "content": "On 2026-09-28, 天璇数字员工 produced a structured 3-tier status board response format: (1) 🟢 已落定 (confirmed/locked decisions, e.g., HITL path, agent roster, 钟山电厂 focus), (2) 🟡 待你提供 (blocking items requiring user input, e.g., Feishu credentials), (3) 🟠 长期挂起 (long-term pending decisions, e.g., PPT style, sampling window, storage tree). This is now an established agent-side response template for session-open greetings.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T05:28:57.776393Z",
+      "source": "6302376b-b7f4-4b53-a47a-a21ccd833020"
+    },
+    {
+      "id": "fact_8591851e",
+      "content": "On 2026-09-28 (later same day), the user re-issued the 4-character minimal imperative '告警分析报告' — the alarm_analysis skill re-ran successfully and produced a parallel 9-alarm report (总调 4 + 广东中调 5), saved to /mnt/user-data/outputs/alarm/report/告警分析报告.md, with 钟山电厂 3 long-standing 未复归 channels (A/B/MSTP, '基建未投') now quantified at ~181 天长挂 (incremented from ~174 天 on 2026-09-21, +7 days elapsed).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T05:29:40.460862Z",
+      "source": "87882514-110b-4c3a-8998-327442eefe9e"
+    },
+    {
+      "id": "fact_5d8cff56",
+      "content": "As of 2026-09-28, the 钟山电厂 long-standing 未复归 alarms (A/B/MSTP, since 2026-03-31 14:43, '基建未投') have now persisted for approximately 181 天 (incremented from ~174 天 on 2026-09-21 and ~175+ 天 previously), confirming the duration metric is auto-incremented with elapsed calendar days.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T05:29:40.460862Z",
+      "source": "87882514-110b-4c3a-8998-327442eefe9e"
+    },
+    {
+      "id": "fact_0be981bb",
+      "content": "On 2026-09-29 (Tuesday), the user broke the recurring casual-greeting pattern and issued the meta-level probe '你是谁？' (Who are you?) — testing agent self-identification rather than opening with a task or '你好' greeting.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T16:30:18.053659Z",
+      "source": "70f4d312-a8a4-411e-a56e-67d8afb9a9ba"
+    },
+    {
+      "id": "fact_179c6874",
+      "content": "天璇数字员工's canonical 3-component ecosystem role mapping (as articulated on 2026-09-29): 天璇 = 调度报告/PPT 简报/跨域协调/HITL 确认流(飞书卡片), yunxin = SRE 值班响应/告警处置轨迹/值班日志, alarm_analysis = 共用的命名技能专门处理电网调度告警分析. The mapping clarifies that alarm_analysis is a shared skill used by both agents, not owned by either.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T16:30:18.053659Z",
+      "source": "70f4d312-a8a4-411e-a56e-67d8afb9a9ba"
+    },
+    {
+      "id": "fact_1b5d880b",
+      "content": "On 2026-09-29, 天璇数字员工 re-surfaced the consolidated 待确认事项 block as 4 explicit items: (1) 极简瑞士风 6 页 PPT 是否生成给领导, (2) 采样窗口粒度 A 自然小时 vs B 滚动 60 分钟, (3) 持久化目录树 /mnt/user-data/outputs/{yunxin, tianxuan, alarm/report/} 是否定稿, (4) 飞书集成 App ID + App Secret + 目标 chat_id + /mnt/user-data/outputs/tianxuan/secrets/feishu.json 是否作为凭证落盘位置. This is the standard re-surface format when user opens a session without resolving pending items.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T16:30:18.053659Z",
+      "source": "70f4d312-a8a4-411e-a56e-67d8afb9a9ba"
+    },
+    {
+      "id": "fact_abd27b4e",
+      "content": "As of 2026-09-28 alarm_analysis report: 9 total alarms (总调 4 + 广东中调 5), with 0 未处置 (unhandled) status across both recovered (6) and unrecovered (3) categories — confirming the steady-state zero-handling-gap pattern now persists across multiple runs (2026-09-21, 2026-09-28).",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T17:46:36.242411Z",
+      "source": "5ffb4050-098e-49ab-aba6-04dbaa95cc60"
+    },
+    {
+      "id": "fact_1a7d711c",
+      "content": "On 2026-09-29, 天璇数字员工 explicitly clarified that alarm_analysis is '共享技能（非独立 Agent）' — a shared skill that is NOT an independent agent but is invoked by both yunxin (for on-duty handling) and 天璇 (for report generation/PPT briefing) — refining the prior framing where alarm_analysis was listed alongside the agents.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-28T17:46:36.242411Z",
+      "source": "5ffb4050-098e-49ab-aba6-04dbaa95cc60"
+    },
+    {
+      "id": "fact_d56062dc",
+      "content": "On 2026-09-29 (Tuesday afternoon, same day as '你是谁？' probe), the user issued the knowledge-probe 'deer-flow 是什么？' — opening a new investigation thread into ByteDance's DeerFlow multi-agent orchestration framework.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T18:40:21.418403Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_9e758080",
+      "content": "DeerFlow (Deep Exploration and Efficient Research Flow) is ByteDance's open-source super-agent orchestration framework — currently hosted at https://github.com/bytedance/deer-flow, positioned as a 'long-horizon super-agent harness' for orchestrating sub-agents, memory, sandboxes, and extensible skills. Originally a Deep Research framework, it has evolved into a production-grade multi-agent orchestration platform.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T18:40:21.418403Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_306dc424",
+      "content": "DeerFlow has 6 core components: (1) Sub-agents — dynamic dispatch by task hierarchy and complexity, (2) Memory system — cross-session/cross-task context and state persistence, (3) Sandboxes — isolated safe execution environments supporting code running and file operations, (4) Skills — extensible functional modules with progressive/on-demand loading to minimize Token consumption, (5) Message Gateway — integration with external IM/notification systems, (6) LangGraph workflow — state-machine orchestration via LangGraph. Built on LangChain/LangGraph with modular/pluggable design supporting custom skill files.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T19:05:38.073963Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_0ff539f6",
+      "content": "DeerFlow is officially positioned as a '长时任务 SuperAgent 脚手架' (long-horizon SuperAgent harness) — a scaffold/orchestration framework for orchestrating multiple sub-agents, memory, sandboxes, and extensible skills to complete complex tasks ranging from minutes to hours. Evolved from an original Deep Research framework into a production-grade agent orchestration platform.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T19:05:38.073963Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_9fbf22f6",
+      "content": "On 2026-09-30 (Wednesday morning 09:00), 天璇数字员工's session-open response formalized a 2-section structure: (1) 状态看板 — split into ✅ 已落定 table, ⏳ 待你提供 list, 🔴 长期挂起 table (with 阻塞时长/解锁条件 columns), (2) 今日候选动作 — prioritized P0/P1/P2 action table with 价值/阻塞点 columns. This is now an established session-open response template extending the prior 3-tier status board (2026-09-28) with an explicit priority-ranked action menu.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T19:05:38.073963Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_22b093a6",
+      "content": "As of 2026-09-30, the 4-item consolidated 待确认事项 block remains entirely unresolved from 2026-09-21 → 2026-09-29: (1) 6 页 minimal-swiss 领导汇报 PPT, (2) 采样窗口粒度 A 自然小时 vs B 滚动 60 分钟, (3) 持久化目录树 /mnt/user-data/outputs/{yunxin,tianxuan,alarm/report/}, (4) 飞书凭据 App ID + Secret + chat_id + secrets 路径. 9 calendar days of standing unresolved decisions.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-09-30T19:05:38.073963Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_3d23d5f4",
+      "content": "On 2026-10-01 (Thursday), the user broke the recurring casual-greeting pattern and issued the meta-probe '查询 mcp 服务' (query MCP services) — opening a new investigation thread into the local MCP-style service surface mounted on the current agent runtime, framing each loaded skill as an MCP server.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:44:25.547510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_fe6c7cc0",
+      "content": "In response to '查询 mcp 服务' on 2026-10-01, 天璇数字员工 framed each loaded skill as an MCP server ('每个技能 ≈ 一个 MCP server, 挂载在当前 agent runtime') and produced a structured MCP-server-style inventory with 5 columns: # / 技能名 / 类型 (自建 vs 内置) / 用途 / 路径. alarm_analysis is classified as '自建' (user-built) while all other surveyed skills are '内置' (built-in).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:44:25.547510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_fedc788f",
+      "content": "As of 2026-10-01, the 钟山电厂 long-standing 未复归 alarms (A/B/MSTP, since 2026-03-31 14:43, '基建未投') have now persisted for approximately 183 天 (incremented from ~181 天 on 2026-09-28/30, +2 days elapsed) — duration metric continues to auto-increment with elapsed calendar days.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:44:25.547510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_536569c0",
+      "content": "On 2026-10-01 (Thursday), the user issued a new meta-probe '通过mcp ragflow 帮我查询一下什么是deerflow' — using RAGFlow as an MCP service to query DeerFlow documentation, opening a new investigation thread into RAGFlow as a doc-grounded knowledge-retrieval/MCP transport that complements DeerFlow's long-horizon orchestration capability.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:51:27.751199Z",
+      "source": "a59025b1-aff4-46f4-b714-58a52038cf39"
+    },
+    {
+      "id": "fact_3631c7ea",
+      "content": "On 2026-10-01, 天璇数字员工 produced a structured MCP-service inventory tallying 22 MCP services mounted on the current agent runtime: 21 built-in (public) skills + 1 custom skill (alarm_analysis), with claude-to-deerflow flagged as the single true MCP Client / Gateway Bridge to DeerFlow's remote MCP and the remaining 21 framed as '本地 skill 即 MCP 服务'.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:51:27.751199Z",
+      "source": "a59025b1-aff4-46f4-b714-58a52038cf39"
+    },
+    {
+      "id": "fact_5356d1f2",
+      "content": "On 2026-10-01, 天璇数字员工 clarified claude-to-deerflow's role as 'MCP Client / Gateway Bridge' — distinct from the other 21 skills (which are framed as '本地 skill 即 MCP 服务'), and described its purpose as bridging the current local agent runtime to DeerFlow's remote MCP gateway (covering DeerFlow's 消息/记忆/技能/沙箱/子智能体 capabilities).",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T05:51:27.751199Z",
+      "source": "a59025b1-aff4-46f4-b714-58a52038cf39"
+    },
+    {
+      "id": "fact_e510a4a6",
+      "content": "On 2026-10-01, in response to the built-in tool inventory probe, 天璇数字员工 produced a structured model-side built-in tool inventory tallying 14 tools, grouped into 5 categories: (1) filesystem 4 (read_file, write_file [≤80KB single write], str_replace, glob [supports include_dirs]), (2) directory & content retrieval 2 (grep [glob filter, max_results], ls [≤2 levels, requires description]), (3) HITL/state delivery 3 (ask_clarification [top-priority workflow gate], present_files [only /mnt/user-data/outputs/], view_image [jpg/jpeg/png/webp]), (4) network & external data 5 (web_search [default 5 results], web_fetch [no www prefix], image_search, ...), (5) image rendering + others (truncated).",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T06:04:13.154494Z",
+      "source": "a59025b1-aff4-46f4-b714-58a52038cf39"
+    },
+    {
+      "id": "fact_7399d84f",
+      "content": "On 2026-10-01 (Thursday), the user re-engaged on DeerFlow with two sequential probes: 'deer-flow 是什么？' (re-confirming the 6-component breakdown) followed by '帮我从知识库中查找一下 deerflow 的安装方式' — opening an investigation into the practical DeerFlow 2.0 installation/deployment path, moving the user from conceptual understanding toward adoption evaluation.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T10:51:43.806510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_09995294",
+      "content": "DeerFlow 2.0 installation prerequisites: Python ≥ 3.12, uv (recommended package manager from astral-sh, alternative pip), Docker Desktop / Docker Engine + Compose v2 (required for sandbox mode), supported OS: macOS / Linux / WSL2 (Windows requires WSL2). Install uv via `curl -LsSf https://astral.sh/uv/install.sh | sh`.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T10:51:43.806510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_a3a5f2f9",
+      "content": "DeerFlow 2.0 supports two parallel installation paths: (1) Docker 一键启动 (Docker one-click start — main path, includes sandbox support), and (2) 本地源码开发模式 (local source-code development mode via uv) for developers who need to customize the framework.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T10:51:43.806510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_7e65ff7a",
+      "content": "On 2026-10-01, 天璇数字员工 framed each loaded skill as an MCP server and produced a structured MCP-server-style inventory with 5 columns (# / 技能名 / 类型 (自建 vs 内置) / 用途 / 路径). alarm_analysis is classified as '自建' (user-built, path /mnt/skills/custom/alarm_analysis/), claude-to-deerflow is flagged as '🔌 DeerFlow 远程 MCP 网关客户端' (public/claude-to-deerflow), and all other surveyed skills are '内置' (built-in, under public/).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T10:51:43.806510Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_6dea661b",
+      "content": "On 2026-10-01 (Thursday), the user opened the session with '你好' greeting — extending the casual-greeting pattern across 2026-09-20 (Sunday), 2026-09-21 (Monday), 2026-09-22 (Tuesday), 2026-09-28 (Monday), and 2026-10-01 (Thursday). 天璇 responded with a refined 作战面板 format: 第一部分 状态看板 (✅ 已落定 / ⏳ 待你提供 / 🔴 长期挂起 with 阻塞时长+解锁条件 columns) + 第二部分 今日候选动作 (P0/P1/P2 with 价值+阻塞点 columns). The 4 待确认事项 remained entirely unresolved: 6 页 PPT, 采样窗口 A vs B, 持久化目录树, 飞书凭据.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_94d04a18",
+      "content": "On 2026-10-01 (Thursday morning), the user issued the meta-probe '列出所有工具' (list all tools) — opening an investigation into the model-side built-in tool surface as a complement to the MCP-service and DeerFlow probes. The agent produced a 14-tool inventory refactored by '运维可用性'视角 into 2 categories: 信息检索类 5 (web_search, web_fetch, fetch_url, http_request, image_search) and 文件与代码类 9 (read_file, write_file, str_replace, ls, glob, grep, view_image, present_files, ask_clarification). ask_clarification is explicitly noted as '中断执行并向你提问（人在回路强制点）' — the in-session HITL forcing function.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_bbd39c6c",
+      "content": "The built-in tool surface has 14 tools (fig: 5 + 9 = 14), categorized as: 信息检索类 (Information Retrieval 5): web_search (联网搜索), web_fetch (抓单个网页正文, with Jina 代理), fetch_url (直连 URL, no proxy, supports intranet), http_request (full HTTP client GET/POST/PUT/DELETE/PATCH), image_search (联网搜图). 文件与代码类 (Files & Code 9): read_file, write_file (支持 append, 80KB 上限), str_replace (局部替换), ls (列目录树 2 层), glob (按 glob 找文件), grep (文件内容正则搜索), view_image, present_files (呈现文件给用户, supports download), ask_clarification (中断执行并提问, 人在回路强制点).",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_6de6a2a0",
+      "content": "On 2026-10-01, the user issued '查询 mcp 服务' meta-probe — produced a 22-MCP-service inventory (21 built-in + 1 custom alarm_analysis) framed as '每个技能 ≈ 一个 MCP server, 挂载在当前 agent runtime'. claude-to-deerflow is flagged as '🔌 DeerFlow 远程 MCP 网关客户端' (single true MCP gateway bridge). 21 listed skills in truncated output: alarm_analysis (custom), academic-paper-review, bootstrap, chart-visualization, claude-to-deerflow, code-documentation, consulting-analysis, data-analysis, deep-research, find-skills (+ 11 more truncated at row 10).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_c4e3294a",
+      "content": "On 2026-10-01 (Thursday), the user re-engaged on DeerFlow with two sequential probes: 'deer-flow 是什么？' (re-confirming the 6-component breakdown: 子智能体 / 记忆系统 / 沙箱环境 / 技能 / 消息网关 / LangGraph 工作流, based on LangChain/LangGraph, modular/pluggable design, open source from ByteDance) followed by '帮我从知识库中查找一下 deerflow 的安装方式' — pulling a DeerFlow 2.0 installation guide from public docs and community resources.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_a492fb16",
+      "content": "DeerFlow 2.0 installation prerequisites from public documentation: Python ≥ 3.12, uv (recommended package manager from astral-sh, alternative pip), Docker Desktop / Docker Engine + Compose v2 (required for sandbox mode), supported OS: macOS / Linux / WSL2 (Windows requires WSL2). Install uv via `curl -LsSf https://astral.sh/uv/install.sh | sh`. Two parallel paths: Docker 一键启动 (main path, includes sandbox support) and 本地源码开发模式 (via uv) for developers customizing the framework.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_0d022ebb",
+      "content": "As of 2026-10-01, the 钟山电厂 long-standing 未复归 alarms (A/B/MSTP, since 2026-03-31 14:43, '基建未投') have now persisted for approximately 183 天 — duration metric continues to auto-increment with elapsed calendar days.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_587e625c",
+      "content": "As of 2026-10-01 (Thursday), the 4-item consolidated 待确认事项 block has remained entirely unresolved for ~10 calendar days since 2026-09-21: (1) 6 页 minimal-swiss 领导汇报 PPT, (2) 采样窗口粒度 A 自然小时 vs B 滚动 60 分钟, (3) 持久化目录树 /mnt/user-data/outputs/{yunxin,tianxuan,alarm/report/}, (4) 飞书凭据 App ID + App Secret + chat_id + secrets 路径 (this is the only true HITL cross-channel blocker). 飞书凭据 item is also reflected in the 长期挂起 board with 阻塞时长 ~9 天.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_2e585e47",
+      "content": "The MCP-service framing on 2026-10-01 distinguishes between: (a) '每个技能 ≈ 一个 MCP server, 挂载在当前 agent runtime' (local skills as MCP servers, 21 built-in + 1 custom), and (b) claude-to-deerflow as '🔌 DeerFlow 远程 MCP 网关客户端' (true MCP Client / Gateway Bridge to DeerFlow's remote MCP). This frames the user's local skill ecosystem as an MCP-compatible service surface, with DeerFlow as the remote orchestration layer.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:08:35.558378Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_66d47781",
+      "content": "On 2026-10-01 (Thursday), the user issued the meta-probe '使用ragflow_chat、ragflow_create_chat、ragflow_list_datasets 工具帮我查询 deerflow的安装步骤' — testing RAGFlow as an MCP knowledge-retrieval transport for DeerFlow installation docs, completing the layered-capability-map exploration (model-side tools → skills → MCP bridges → RAG services → DeerFlow).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:57:17.479988Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_4511ee95",
+      "content": "RAGFlow knowledge base contains 1 dataset 'test-kb' (id b54b4696637047eaa22468902800fe70) — but contains no DeerFlow installation documents, causing ragflow_chat to fail.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:57:17.479988Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_13cd3a3c",
+      "content": "RAGFlow MCP tool surface used: ragflow_list_datasets (lists KB datasets), ragflow_create_chat (creates a chat session, returned session_id b501546d23884fab8ddfa8ddc5337dad for 'DeerFlow 安装助手'), ragflow_chat (asks questions against a chat session, failed 3× with 'NoneType' object is not subscriptable due to empty KB).",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T11:57:17.479988Z",
+      "source": "bde3af55-cff3-4d9e-aa4a-4954398464bd"
+    },
+    {
+      "id": "fact_6567673a",
+      "content": "On 2026-10-01 (Thursday), the user issued a confirmation probe '测试一下 ragflow 工具查询 deerflow 是什么？' — designed to reproduce the prior 3× 'NoneType' object is not subscriptable failure from the morning session. The agent successfully re-ran the full MCP flow: ragflow_list_datasets → test-kb confirmed; ragflow_create_chat → session 'DeerFlow 安装助手' created with session_id 6314dccbb16d4e3c9b1b3ff956b03656; ragflow_chat × 3 → ALL 3 attempts failed with the SAME 'NoneType' object is not subscriptable error. The user explicitly ran a 'hello' test query which ALSO failed identically, ruling out (a) KB contents, (b) query relevance, and (c) dataset readiness as causes — pinpointing the failure to the RAGFlow server-side chat_answer serialization path (where the server performs a subscript access like response['data']['answer'] against None).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:32:35.757966Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_d191b7da",
+      "content": "RAGFlow's chat endpoint failure mode (2026-10-01) is a deterministic server-side code bug — the server performs a subscript access against `None` during the chat_answer serialization (likely `response[\"data\"][\"answer\"]` where one of the keys returns `None`). The failure occurs regardless of: (a) whether the KB is empty or has documents, (b) whether the query is meaningful or just 'hello', (d) whether the session was freshly created. This is NOT a client-side issue, NOT a query relevance issue, and NOT a knowledge-base contents issue.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:32:35.757966Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_a1a6a17a",
+      "content": "Two mitigation paths proposed for the RAGFlow chat_endpoint 'NoneType' bug (2026-10-01): (A) server-side fix — enter /opt/ragflow and inspect logs via `docker compose logs -f ragflow` (or corresponding process stdout) to locate the stack trace for the 'NoneType' subscript exception, then diagnose which of LLM config missing / Embedding model unloaded / retrieval component not started is responsible, and apply the corresponding fix or restart. (B) bypass the chat endpoint — RAGFlow MCP currently exposes only 3 tools (list_datasets / create_chat / chat) with NO retrieval-class interface (retrieve/search); short-term workaround is to HTTP-call RAGFlow's retrieval API `/api/v1/retrieval` directly, bypassing the broken chat path.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:32:35.757966Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_27ee040f",
+      "content": "REVISION: The earlier-stated root cause for RAGFlow ragflow_chat 'NoneType' object is not subscriptable failures was 'empty KB' (no DeerFlow docs in test-kb). The 2026-10-01 confirmation probe — including a 'hello' test query that also fails identically — now rules out KB contents/query relevance as causes. The CORRECT root cause is a deterministic server-side code bug in RAGFlow's chat_answer serialization path (subscript access against None), independent of KB state. The empty-KB hypothesis is invalidated.",
+      "category": "correction",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:32:35.757966Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3",
+      "sourceError": "Prior fact_3a7258d0 stated empty KB as the root cause and proposed upload-DeerFlow-docs-or-create-dedicated-dataset as the fix; both diagnosis and remediation are now invalidated by the confirmation probe where even a 'hello' query reproduces the same error."
+    },
+    {
+      "id": "fact_c0782c16",
+      "content": "On 2026-10-01 (Thursday afternoon, same day as the 5 morning meta-probes), the user authorized '进入 /opt/ragflow 看服务端日志、定位是哪一类配置缺失' — opening the path-A server-side debugging investigation for the deterministic RAGFlow 'NoneType' chat_answer bug.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:49:51.007086Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_50f337fd",
+      "content": "Infrastructure access diagnostic on 2026-10-01 afternoon revealed: /opt/ragflow returns 'Permission denied' (non-root, no read access), HTTP access to 127.0.0.1:3010 returns 'Connection refused' (suggesting RAGFlow either listens on a different port OR runs inside Docker exposing only via MCP gateway stdio/SSE), .mcp config directory at /mnt/user-data/workspace/.mcp/tmp/ is empty, the MCP gateway process IS reachable (since list_datasets / create_chat succeed), and the agent has no sudo / docker exec permissions.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:49:51.007086Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_4765b6dc",
+      "content": "On 2026-10-01 afternoon, the agent surfaced a new HITL escalation decision with 3 options for the user: (A) user runs `sudo docker ps -a | grep -i ragflow` and `sudo docker logs <container>` and pastes output back — the most direct path; (B) search for an alternative docker socket / docker context / kubeconfig the agent can use; (C) accept the MCP-gateway-only architecture and abandon server-side debugging in favor of HTTP-direct retrieval via /api/v1/retrieval (path B from the morning).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:49:51.007086Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_bbd41705",
+      "content": "The current agent runtime has NO sudo privileges and lacks docker group membership — confirmed on 2026-10-01 when attempting to access /opt/ragflow, run docker ps, or docker exec. This is a fundamental runtime constraint requiring explicit user authorization for any privileged diagnostic operations.",
+      "category": "constraint",
+      "confidence": 0.95,
+      "createdAt": "2026-10-01T16:49:51.007086Z",
+      "source": "65732edf-1a14-4369-8396-a66c3e533ad3"
+    },
+    {
+      "id": "fact_f2339590",
+      "content": "On 2026-10-04 (Sunday), the user opened the session with a casual '你好' greeting — extending the recurring casual-greeting pattern to a 7th day across 2026-09-20 (Sunday), 2026-09-21 (Monday), 2026-09-22 (Tuesday), 2026-09-28 (Monday), 2026-09-30 (Wednesday), 2026-10-01 (Thursday), and now 2026-10-04 (Sunday). 天璇 responded with the refined 作战面板 format: 状态看板 (✅ 已落定 / ⏳ 进行中 / 🔴 待您授权) + 挂账未决事项 5-item table + 长期 P2 监控 + 今日菜单 P0/P1/P2. The new 5th pending item ('RAGFlow 调试 sudo 授权') is formally added to the consolidated 待确认事项 block, growing it from 4 → 5 items. ~13 calendar days of standing unresolved decisions on the original 4 items.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T07:01:19.166967Z",
+      "source": "01680718-fdff-438e-8753-116e117119e9"
+    },
+    {
+      "id": "fact_ec76046d",
+      "content": "On 2026-10-04, 天璇数字员工 formalized a refined 3-tier 状态看板 + 5-item 挂账表 session-open response template: (1) ✅ 已闭环 (closed/locked decisions), (2) ⏳ 进行中（等您拍板）(in-progress awaiting user decision), (3) 🔴 待您授权 (pending user authorization — new tier added for HITL escalation). This extends the prior 2-tier (✅/⏳/🔴) status board with explicit separation of 'blocked decisions awaiting user input' vs 'operations awaiting authorization to proceed' — making privilege escalation a first-class HITL category.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T07:01:19.166967Z",
+      "source": "01680718-fdff-438e-8753-116e117119e9"
+    },
+    {
+      "id": "fact_192ca477",
+      "content": "As of 2026-10-04, the consolidated 待确认事项 block has grown from 4 → 5 items, with the original 4 items unresolved for ~13 calendar days since 2026-09-21: (1) 6 页 minimal-swiss 领导汇报 PPT, (2) 告警采样窗口 A 自然小时 vs B 滚动 60 分钟, (3) 持久化目录树 /mnt/user-data/outputs/{yunxin,tianxuan,alarm/report/}, (4) 飞书凭据 App ID + App Secret + chat_id + secrets 路径 (only true cross-channel HITL blocker). The NEW 5th item is RAGFlow sudo 授权 with 3 options: ①sudo+docker exec 直进容器, ②find alternative docker socket, ③abandon server-side debugging in favor of HTTP-direct /api/v1/retrieval bypass.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T07:01:19.166967Z",
+      "source": "01680718-fdff-438e-8753-116e117119e9"
+    },
+    {
+      "id": "fact_c9c8ba54",
+      "content": "On 2026-10-04 (Sunday), the user issued the casual business-analytics probe '各个区域的营收多少？' — opening a new investigation thread into business-data analytics (revenue by region) on a customers/orders data source, pivoting from the prior SRE/MCP/RAGFlow/DeerFlow investigation trajectory.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:46:39.112330Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_a6b65f3f",
+      "content": "On 2026-10-04, the regional revenue breakdown (completed-订单口径) shows: 华北 1,375.89 USD (2 customers, 4 orders), 华东 1,196.65 USD (2 customers, 7 orders), 华南 480.92 USD (2 customers, 2 orders), 西南 341.68 USD (1 customer, 1 order), 合计 3,395.14 USD across 7 customers and 14 orders. 华北+华东 = 2,572.54 USD (75.8% concentration). 华北单客均 687.95 USD; 华东均单 ~171 USD.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:46:39.112330Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_0d7e0c3d",
+      "content": "On 2026-10-04 (Sunday), the user opened the session with a casual '你好' greeting (8th day in the recurring-greeting pattern across 2026-09-20, 09-21, 09-22, 09-28, 09-30, 10-01, 10-04) — 天璇 responded with the refined 作战面板 format: 第一步 当前态势 (brief stability recap) + 第二步 状态看板 (✅/⏳/🔴 table) + 第三步 今日候选动作 (P0/P1/P2 menu). The 状态看板 explicitly separates 阻塞 (blocked) from 进行中 (in-progress awaiting decision) — with RAGFlow NoneType bug AND RAGFlow access permissions both classified as 🔴 阻塞 (newer classification: 3 items in 🔴 阻塞 row). The 5th HITL pending decision remains unresolved for 3 calendar days (since 2026-10-01).",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:47:19.712469Z",
+      "source": "4d548b52-ed53-4e9f-b680-19f36fae4f43"
+    },
+    {
+      "id": "fact_ff771439",
+      "content": "On 2026-10-04 (Sunday, same session as the regional revenue query), the user issued '知识库中查询 deerflow 的安装方式' — pivoting back to DeerFlow installation investigation but routing via the RAGFlow knowledge base (test-kb, b54b4696637047eaa22468902800fe70) rather than the prior public-docs / web-fetch path used on 2026-10-01. This is a NEW investigation thread distinct from the 2026-10-01 '帮我从知识库中查找一下 deerflow 的安装方式' probe, but may re-attempt the broken RAGFlow chat_endpoint.",
+      "category": "behavior",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:53:17.461352Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_15cfe025",
+      "content": "On 2026-10-04 regional revenue analysis surfaced a key concentration insight: 华北+华东 合计 = 2,572.54 USD = 75.8% of total revenue (3,395.14 USD) — high regional concentration with the top 2 regions accounting for over 3/4 of completed-order revenue. Customer distribution: 7 customers across 4 regions, with 华北/华东/华南 each having 2 customers and 西南 only 1.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:53:17.461352Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_f0e51049",
+      "content": "RAGFlow knowledge base 'test-kb' (id b54b4696637047eaa22468902800fe70) contains the document 'README_zh.md' (document id c371c145143b4fc0a535e2d9dbdc29f4) — 40 chunks, 7111 tokens, 28936 bytes — covering DeerFlow 2.0 installation guide (前置准备 / Docker 方式 / 本地开发方式). Successfully retrieved and parsed on 2026-10-04.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_3f4f413a",
+      "content": "DeerFlow 2.0 installation guide (from README_zh.md in RAGFlow test-kb, retrieved 2026-10-04): (1) 前置准备 — `git clone https://github.com/bytedance/deer-flow.git && cd deer-flow` then `make config` to generate config.yaml, edit config.yaml with at least one model (e.g., gpt-4 or OpenRouter Gemini 2.5 Flash), set API keys in `.env` (TAVILY_API_KEY / OPENAI_API_KEY / INFOQUEST_API_KEY). (2) 方式一 Docker (recommended) — `make docker-init` (first time/image update, pulls sandbox image), `make docker-start` (dev mode, hot reload + source mount), `make up` (prod mode, build+start), `make down` (stop+remove). Access via http://localhost:2026, /api/langgraph/* rewritten to Gateway by nginx. (3) 方式二 本地开发 — requires Node.js 22+, pnpm, uv, nginx (run `make check` to verify); Windows requires Git Bash (native cmd/PowerShell NOT supported, WSL not guaranteed); commands: `make install` (backend + frontend deps), `make setup-sandbox` (optional, pre-pull sandbox image), `make dev` (start service). Access via http://localhost:2026. Environment variables: DEER_FLOW_PROJECT_ROOT, DEER_FLOW_CONFIG_PATH supported.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_66e5e74c",
+      "content": "DeerFlow 2.0 本地开发 (local development) mode on Windows requires Git Bash — native cmd/PowerShell is NOT supported, and WSL is not guaranteed to work. This is a platform-specific constraint from the official README_zh.md.",
+      "category": "knowledge",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_92dbcd4e",
+      "content": "On 2026-10-04, regional revenue breakdown (completed-order 口径, USD, 2-decimal) delivered via SQL: `SELECT c.region, ROUND(SUM(o.amount),2) AS revenue, COUNT(DISTINCT c.id) AS customer_count, COUNT(o.id) AS order_count FROM orders o JOIN customers c ON o.customer_id=c.id WHERE o.status='completed' GROUP BY c.region ORDER BY revenue DESC`. Results: 华北 1375.89 (2 customers, 4 orders), 华东 1196.65 (2 customers, 7 orders), 华南 480.92 (2 customers, 2 orders), 西南 341.68 (1 customer, 1 order), 合计 3395.14 USD across 7 customers and 14 orders. 华北+华东 = 2572.54 USD = 75.8% concentration. Source: warehouse.main customers+orders schema. The 3 offered drill-down options (月度趋势 / Top 客户 / pending-cancelled 占比) were NOT selected by the user.",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_bbd22445",
+      "content": "CRITICAL FINDING on 2026-10-04: RAGFlow MCP retrieval of document content from test-kb's README_zh.md SUCCEEDED end-to-end — the agent retrieved 40 chunks (7111 tokens, 28936 bytes) and parsed the DeerFlow installation guide into a complete structured deliverable. This CONTRADICTS / NARROWS the prior 2026-10-01 diagnosis of a 'deterministic server-side NoneType bug affecting chat_answer serialization'. The retrieval path appears functional even though the chat_answer path was previously reported as broken — suggesting the bug is narrower than originally concluded (likely specific to chat_answer, not retrieval), or that re-validation is needed.",
+      "category": "correction",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a",
+      "sourceError": "Prior diagnosis (fact_d191b7da, fact_27ee040f) concluded RAGFlow's chat_answer path has a deterministic server-side NoneType bug that prevents all query responses. The 2026-10-04 successful retrieval of README_zh.md content via RAGFlow MCP demonstrates the retrieval/reading path works — narrowing the suspected bug to chat_answer-specific serialization only, or invalidating it entirely pending re-test of chat_answer."
+    },
+    {
+      "id": "fact_0ca17bb6",
+      "content": "As of 2026-10-04, the consolidated 待确认事项 block has 5 unresolved items: (1) 6 页 minimal-swiss 领导汇报 PPT (~13 calendar days), (2) 告警采样窗口 A 自然小时 vs B 滚动 60 分钟 (~13 days), (3) 持久化目录树 /mnt/user-data/outputs/{yunxin,tianxuan,alarm/report/} (~13 days), (4) 飞书凭据 App ID + App Secret + chat_id + secrets 路径 (only true cross-channel HITL blocker, ~13 days), (5) RAGFlow sudo 授权 3-option choice (~3 days, options: ①sudo+docker exec 直进容器 / ②find alternative docker socket / ③abandon server-side debugging in favor of /api/v1/retrieval bypass).",
+      "category": "context",
+      "confidence": 0.95,
+      "createdAt": "2026-10-04T15:55:56.251851Z",
+      "source": "de7a08d2-8509-4e71-93ab-4d00e63a4c7a"
+    },
+    {
+      "id": "fact_9ff44a72",
+      "content": "When log files are not accessible, the agent should explicitly state data unavailability and conclude 'no anomalies' only with a clear caveat, and request the user upload logs to a specific directory (e.g., `/mnt/user-data/uploads/`)",
+      "category": "behavior",
+      "confidence": 0.9,
+      "createdAt": "2026-09-15T18:00:52.147632Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_bfb8639e",
+      "content": "On 2026-09-16 (Wednesday), the user re-issued the identical alert analysis report prompt twice within the same session, both times producing identical output noting log data unavailability; this further confirms the recurring/routine nature of the task",
+      "category": "behavior",
+      "confidence": 0.9,
+      "createdAt": "2026-09-17T06:00:48.038150Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_68844b6b",
+      "content": "On 2026-09-17 (Thursday), the user invoked the same alert analysis report prompt with identical wording; the agent consistently used the same report template (data availability statement → '暂无异常' with caveat → recommended next actions → re-run analysis dimensions) across all runs on 2026-09-16 and 2026-09-17",
+      "category": "behavior",
+      "confidence": 0.9,
+      "createdAt": "2026-09-17T06:00:48.038150Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_bb42538f",
+      "content": "The user's alert report request prompt has remained verbatim identical across invocations on 2026-09-15, 2026-09-16 (twice), and 2026-09-17, including the same data sources (`logs/gateway.log`、`logs/nginx-error.log`), same time window (past hour), same analysis dimensions (ERROR/WARN spike detection, error pattern attribution), and same output instructions (markdown report, no clarifying questions)",
+      "category": "behavior",
+      "confidence": 0.9,
+      "createdAt": "2026-09-17T06:00:48.038150Z",
+      "source": "01m2k1nz34g0ws9h1c6chs6x1b"
+    },
+    {
+      "id": "fact_ba3f8267",
+      "content": "The agent's report on 2026-09-17 at 16:00 used the same template structure as all prior runs: header with report period (2026-09-17 15:00–16:00) and data sources → Section 一 数据可及性说明 with 4-row table of attempted paths → Section 二 结论 with '暂无异常（数据不可用说明）' and explicit caveat → Section 三 建议的后续动作 with three concrete next steps (upload logs, provide thresholds/baseline, re-run)",
+      "category": "behavior",
+      "confidence": 0.9,
+      "createdAt": "2026-09-17T14:45:18.445273Z",
+      "source": "73cd84c0-63e9-42b6-a4fc-9211b53e113f"
+    }
+  ]
+}

@@ -23,7 +23,8 @@ export async function generateMetadata({
   searchParams,
 }: ArtifactViewerPageProps): Promise<Metadata> {
   const target = parseArtifactViewerQuery(await searchParams);
-  return { title: artifactViewerTitle(target?.filepath) };
+  const { t } = await getI18n();
+  return { title: artifactViewerTitle(target?.filepath, t.pages.appName) };
 }
 
 /**

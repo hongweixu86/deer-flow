@@ -734,7 +734,7 @@ class WechatChannel(Channel):
             },
             status="connected",
         )
-        await self._send_connection_reply(chat_id, context_token, "WeChat connected to DeerFlow.")
+        await self._send_connection_reply(chat_id, context_token, "WeChat connected to Digital Employee.")
         return True
 
     async def _send_connection_reply(self, chat_id: str, context_token: str, text: str) -> None:

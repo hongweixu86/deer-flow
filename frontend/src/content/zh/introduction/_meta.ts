@@ -5,7 +5,7 @@ const meta: MetaRecord = {
     title: "简介",
   },
   "why-deerflow": {
-    title: "为什么选择 DeerFlow",
+    title: "为什么选择 数字员工",
   },
   "core-concepts": {
     title: "核心概念",

@@ -79,15 +79,15 @@ DEFAULT_RUN_CONTEXT: dict[str, Any] = {
     "subagent_enabled": False,
 }
 STREAM_UPDATE_MIN_INTERVAL_SECONDS = 1.0
-STREAM_UPDATE_MIN_CHARS = 60  # flush immediately when this many chars accumulate
+STREAM_UPDATE_MIN_CHARS = 30  # flush immediately when this many chars accumulate
 # Stream modes requested from the runtime, and the SSE event names under which
 # the message-tuple stream may arrive: the embedded runtime (and LangGraph
 # Platform) deliver the requested "messages-tuple" mode as event "messages".
 STREAM_MODES = ["messages-tuple", "values"]
 MESSAGE_STREAM_EVENTS = ("messages-tuple", "messages")
 THREAD_BUSY_MESSAGE = "This conversation is already processing another request. Please wait for it to finish and try again."
-BOUND_IDENTITY_REQUIRED_MESSAGE = "Connect this channel from DeerFlow Settings, complete the in-channel connect step, then send your message again."
-BOUND_IDENTITY_UNAVAILABLE_MESSAGE = "Channel connection verification is temporarily unavailable. Please try again later or contact the DeerFlow operator."
+BOUND_IDENTITY_REQUIRED_MESSAGE = "Connect this channel from Digital Employee Settings, complete the in-channel connect step, then send your message again."
+BOUND_IDENTITY_UNAVAILABLE_MESSAGE = "Channel connection verification is temporarily unavailable. Please try again later or contact the Digital Employee operator."
 # Inbound-redelivery dedup window. The dedupe state lives in
 # ``self._inbound_dedupe_store``: the default in-process Memory store is
 # local to this Gateway process (a recorded key survives only for the store's
@@ -2634,6 +2634,20 @@ class ChannelManager:
                 # OR logic: flush when interval elapsed OR enough chars accumulated
                 if last_published_text:
                     if now - last_publish_at < STREAM_UPDATE_MIN_INTERVAL_SECONDS and new_chars < STREAM_UPDATE_MIN_CHARS:
+                        # DIAG: record every throttled intermediate update so we can
+                        # correlate "the user only saw the final PATCH" with how much
+                        # text was swallowed here.
+                        logger.debug(
+                            "[Manager][stream-diag] throttled intermediate: thread_id=%s channel=%s "
+                            "new_chars=%d threshold=%d interval=%.2fs latest_len=%d last_pub_len=%d",
+                            thread_id,
+                            msg.channel_name,
+                            new_chars,
+                            STREAM_UPDATE_MIN_CHARS,
+                            now - last_publish_at,
+                            len(latest_text),
+                            len(last_published_text or ""),
+                        )
                         continue
 
                 display_text = latest_text + " ▉"
@@ -2653,6 +2667,16 @@ class ChannelManager:
                 last_published_text = latest_text
                 last_published_len = len(latest_text)
                 last_publish_at = now
+                # DIAG: every published intermediate PATCH so the Feishu running-card
+                # log can be cross-referenced by (channel, thread_id) + length.
+                logger.debug(
+                    "[Manager][stream-diag] published intermediate: thread_id=%s channel=%s "
+                    "text_len=%d last_published_len=%d",
+                    thread_id,
+                    msg.channel_name,
+                    len(latest_text),
+                    last_published_len,
+                )
         except Exception as exc:
             stream_error = exc
             if _is_thread_busy_error(exc):
@@ -2679,6 +2703,40 @@ class ChannelManager:
                         response_text = "An error occurred while processing your request. Please try again."
                 else:
                     response_text = latest_text or "(No response from agent)"
+
+            # DIAG: compare streamed buffer vs values snapshot vs published final.
+            # This is the smoking-gun log for "DONE 之前输出被截断":
+            #   - response_len < latest_len  ⇒ final PATCH shrank the running card
+            #   - last_values is None          ⇒ values stream never fired
+            #   - last messages type is 'tool' ⇒ no AI text in snapshot
+            last_values_messages = (last_values or {}).get("messages", []) if isinstance(last_values, dict) else []
+            last_msg = last_values_messages[-1] if last_values_messages else None
+            last_msg_type = last_msg.get("type") if isinstance(last_msg, dict) else None
+            last_msg_content = last_msg.get("content") if isinstance(last_msg, dict) else None
+            if isinstance(last_msg_content, str):
+                last_msg_content_len = len(last_msg_content)
+            elif isinstance(last_msg_content, list):
+                last_msg_content_len = sum(
+                    len(b.get("text", "")) for b in last_msg_content if isinstance(b, dict) and b.get("type") == "text"
+                )
+            else:
+                last_msg_content_len = -1
+            truncated = len(latest_text) > len(response_text)
+            logger.info(
+                "[Manager][stream-diag] final publish: thread_id=%s channel=%s "
+                "last_values=%s last_values_msg_count=%d last_msg_type=%s last_msg_content_len=%d "
+                "latest_len=%d response_len=%d truncated=%s stream_error=%r",
+                thread_id,
+                msg.channel_name,
+                "set" if last_values is not None else "None",
+                len(last_values_messages),
+                last_msg_type,
+                last_msg_content_len,
+                len(latest_text),
+                len(response_text),
+                truncated,
+                type(stream_error).__name__ if stream_error else None,
+            )
 
             logger.info(
                 "[Manager] streaming response completed: thread_id=%s, response_len=%d, artifacts=%d, error=%s",

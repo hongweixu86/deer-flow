@@ -114,9 +114,16 @@ export function parseArtifactViewerQuery(
  * Applied through the route's `generateMetadata`, not `document.title`: the
  * App Router owns the title element and re-applies the layout's metadata over
  * anything an effect writes.
+ *
+ * `brand` is the localized product name (e.g. "Digital Employee" or "数字员工")
+ * — the route resolves it through the server-side i18n helper so the tab
+ * matches the visitor's locale.
  */
-export function artifactViewerTitle(filepath: string | undefined) {
-  return filepath ? `${getFileName(filepath)} - DeerFlow` : "DeerFlow";
+export function artifactViewerTitle(
+  filepath: string | undefined,
+  brand = "Digital Employee",
+) {
+  return filepath ? `${getFileName(filepath)} - ${brand}` : brand;
 }
 
 /**

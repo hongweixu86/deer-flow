@@ -159,12 +159,18 @@ describe("parseArtifactViewerQuery", () => {
 describe("artifactViewerTitle", () => {
   test("names the window after the artifact file", () => {
     expect(artifactViewerTitle("/mnt/user-data/outputs/report.md")).toBe(
-      "report.md - DeerFlow",
+      "report.md - Digital Employee",
     );
   });
 
+  test("uses the caller-supplied brand when one is provided", () => {
+    expect(
+      artifactViewerTitle("/mnt/user-data/outputs/report.md", "数字员工"),
+    ).toBe("report.md - 数字员工");
+  });
+
   test("falls back to the product name without a target", () => {
-    expect(artifactViewerTitle(undefined)).toBe("DeerFlow");
+    expect(artifactViewerTitle(undefined)).toBe("Digital Employee");
   });
 });
 

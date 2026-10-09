@@ -263,6 +263,37 @@ def test_managed_sandbox_runtime_verifies_and_installs_linux_archives(monkeypatc
     assert "x86_64" in launcher and "aarch64" in launcher
 
 
+def test_managed_sandbox_runtime_root_is_traversable_for_sandbox_user(monkeypatch, tmp_path) -> None:
+    """The runtime root must not stay 0o700: AIO sandboxes execute as non-root.
+
+    The installer stages the tree with ``tempfile.mkdtemp`` (0o700). When that
+    directory is bind-mounted read-only into an AIO sandbox whose commands run
+    as uid 1000, a 0o700 root denies traversal and ``lark-cli`` goes missing
+    despite the injected PATH — for both fresh installs and the manifest-match
+    early return.
+    """
+    assert hasattr(lark_cli, "_ensure_managed_sandbox_lark_cli"), "managed sandbox runtime installer is missing"
+    _patch_paths(monkeypatch, tmp_path / "home")
+    archives = {
+        "lark-cli-1.0.65-linux-amd64.tar.gz": _make_lark_cli_binary_tar(b"\x7fELF-amd64-payload"),
+        "lark-cli-1.0.65-linux-arm64.tar.gz": _make_lark_cli_binary_tar(b"\x7fELF-arm64-payload"),
+    }
+    checksums = "".join(f"{hashlib.sha256(payload).hexdigest()}  {name}\n" for name, payload in archives.items()).encode()
+    assets = {"checksums.txt": checksums, **archives}
+    monkeypatch.setattr(lark_cli, "_download_lark_release_asset", lambda _version, name, **_kwargs: assets[name])
+
+    runtime = lark_cli._ensure_managed_sandbox_lark_cli("v1.0.65")
+
+    if os.name != "nt":
+        assert stat.S_IMODE(runtime.stat().st_mode) & 0o555 == 0o555
+
+    # The manifest-match early return must keep healing the root mode too.
+    runtime.chmod(0o700)
+    healed = lark_cli._ensure_managed_sandbox_lark_cli("v1.0.65")
+    if os.name != "nt":
+        assert stat.S_IMODE(healed.stat().st_mode) & 0o555 == 0o555
+
+
 def test_managed_sandbox_runtime_rejects_checksum_mismatch(monkeypatch, tmp_path) -> None:
     assert hasattr(lark_cli, "_ensure_managed_sandbox_lark_cli"), "managed sandbox runtime installer is missing"
     _patch_paths(monkeypatch, tmp_path / "home")
@@ -2257,6 +2288,60 @@ def test_complete_lark_auth_accepts_short_automatic_poll_timeout(monkeypatch, tm
 
     assert result.success is True
     assert captured["timeout"] == 8
+
+
+def test_complete_lark_auth_short_circuits_when_user_is_already_authenticated(monkeypatch, tmp_path) -> None:
+    """Frontend automatic polling can fire `complete` after Lark has already
+    consumed the device_code. Re-running `lark-cli auth login --device-code`
+    on a consumed code surfaces "The device_code is invalid" to the UI even
+    though the user actually authorized successfully. We must short-circuit
+    on `probe_lark_auth(verify=True) == authenticated` and return success
+    without touching the device_code again.
+    """
+    _patch_paths(monkeypatch, tmp_path / "home")
+    config = _config(tmp_path / "skills")
+
+    monkeypatch.setattr(lark_cli, "_resolve_lark_cli_path", lambda: "/usr/bin/lark-cli")
+    monkeypatch.setattr(lark_cli, "probe_lark_auth", lambda _user_id, **_kwargs: lark_cli.LarkAuthProbe(status="authenticated", user="Alice", verified=True))
+    monkeypatch.setattr(
+        lark_cli,
+        "_run_lark_cli_json",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("already-authenticated user must not trigger lark-cli auth login --device-code")),
+    )
+    monkeypatch.setattr(
+        lark_cli,
+        "get_lark_integration_status",
+        lambda _user_id, _config, **_kwargs: lark_cli.LarkIntegrationStatus(
+            installed=True,
+            version="v1.0.65",
+            manifest_version="v1.0.65",
+            latest_available_version=None,
+            runtime_version_mismatch=False,
+            app_configured=True,
+            app_id="cli_mock",
+            app_brand="feishu",
+            skills_expected=27,
+            skills_installed=27,
+            installed_skills=("lark-doc",),
+            enabled_skills=("lark-doc",),
+            install_path="/tmp/lark",
+            cli=lark_cli.LarkCliProbe(available=True),
+            auth=lark_cli.LarkAuthProbe(status="authenticated", user="Alice", verified=True),
+        ),
+    )
+
+    generation = _advance_lark_flow()
+    result = lark_cli.complete_lark_auth(
+        "alice",
+        config,
+        device_code="consumed-device-code",
+        generation=generation,
+        wait_timeout_seconds=8,
+    )
+
+    assert result.success is True
+    assert result.status.auth.status == "authenticated"
+    assert "completed" in result.message.lower()
 
 
 def test_complete_lark_auth_rejects_superseded_generation_before_token_write(monkeypatch, tmp_path) -> None:

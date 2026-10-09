@@ -592,7 +592,7 @@ def test_connect_success_sends_confirmation_reply():
     events = _events_of(transport)
     assert len(events) == 1
     assert events[0]["kind"] == 9
-    assert events[0]["content"] == "Buzz connected to DeerFlow."
+    assert events[0]["content"] == "Buzz connected to Digital Employee."
     assert ["p", NEWCOMER] in events[0]["tags"]
     assert captured == []  # still never published as a chat message
 

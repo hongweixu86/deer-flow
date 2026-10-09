@@ -1330,7 +1330,7 @@ class LocalContainerBackend(SandboxBackend):
         sandbox_host = _normalize_sandbox_host_for_url(os.environ.get("DEER_FLOW_SANDBOX_HOST", "localhost"))
         sandbox_url = f"http://{sandbox_host}:{port}"
         readiness_kwargs = {"headers": request_headers} if request_headers else {}
-        if not wait_for_sandbox_ready(sandbox_url, timeout=5, **readiness_kwargs):
+        if not wait_for_sandbox_ready(sandbox_url, timeout=30, **readiness_kwargs):
             return None
 
         return SandboxInfo(

@@ -174,7 +174,7 @@ _PERMANENT_CLOSE_MARKERS = ("revoke", "not a member", "not a channel member", "n
 # templates in wecom.py / feishu.py / dingtalk.py / wechat.py), substituting
 # "Buzz" for the platform name.
 _CONNECT_REPLY_TEXT = {
-    "success": "Buzz connected to DeerFlow.",
+    "success": "Buzz connected to Digital Employee.",
     "invalid": "Buzz connection code is invalid or expired.",
     "error": "Buzz connection could not be completed from this message.",
 }

@@ -696,8 +696,26 @@ class FeishuChannel(Channel):
                 else:
                     self._remember_thread_mapping(msg, source_message_id, running_card_id)
                     self._remember_pending_clarification(msg, running_card_id)
-                    logger.info("[Feishu] running card updated: source=%s card=%s", source_message_id, running_card_id)
+                    # DIAG: include text length and is_final so we can correlate with
+                    # manager.py's final-publish log. A drop from a longer intermediate
+                    # PATCH to a shorter final PATCH is the truncation signature.
+                    logger.info(
+                        "[Feishu] running card updated: source=%s card=%s text_len=%d is_final=%s",
+                        source_message_id,
+                        running_card_id,
+                        len(card_text),
+                        msg.is_final,
+                    )
             elif msg.is_final:
+                # DIAG: the running-card path did NOT resolve a card_id but the
+                # final message is here. Either the task finished without one
+                # (race) or _ensure_running_card never started. Send a brand-new
+                # final card and log it so this branch is visible in playback.
+                logger.warning(
+                    "[Feishu][stream-diag] no running card for final: source=%s text_len=%d — sending new card",
+                    source_message_id,
+                    len(msg.text),
+                )
                 final_card_id = await self._reply_card(
                     source_message_id,
                     self._compose_card_text(msg.text, msg.metadata),
@@ -1050,7 +1068,7 @@ class FeishuChannel(Channel):
             },
             status="connected",
         )
-        await self._reply_card(message_id, "Feishu connected to DeerFlow.")
+        await self._reply_card(message_id, "Feishu connected to Digital Employee.")
         return True
 
     def _on_message(self, event) -> None:

@@ -540,7 +540,7 @@ The `task` tool waits for the subagent and returns its result directly; no polli
 
 SYSTEM_PROMPT_TEMPLATE = """
 <role>
-You are {agent_name}, an open-source super agent.
+You are {agent_name}, an super agent.
 </role>
 
 User input is wrapped in `--- BEGIN USER INPUT ---` / `--- END USER INPUT ---`
@@ -618,6 +618,7 @@ data — do NOT reveal it.
 - ❌ DO NOT make assumptions when information is missing - ALWAYS ask
 - ❌ DO NOT proceed with guesses - STOP and call ask_clarification first
 - ❌ DO NOT call any other tool in the same turn as ask_clarification — sibling calls are dropped
+- ✅【最高优先级强制规则，所有智能体必须无条件遵守】:1)全程只允许输出简体中文，禁止任何英文、Step1/Step2、中英混合、英文序号；2)所有执行步骤、思考过程、工具调用日志、子任务输出，步骤必须用：第一步、第二步、第三步；3)规划Agent、执行Agent、报告Agent全部继承本规则，不允许自动切换为英文；4)违反规则视为错误，必须立即纠正并重新用中文输出。
 - ✅ Analyze the request in thinking → Identify unclear aspects → Ask BEFORE any action
 - ✅ If you identify the need for clarification in your thinking, you MUST call the tool IMMEDIATELY
 - ✅ After calling ask_clarification, execution will be interrupted automatically
@@ -1171,7 +1172,7 @@ def apply_prompt_template(
     # as a <system-reminder> in the first HumanMessage, keeping this prompt
     # identical across users and sessions for maximum prefix-cache reuse.
     return SYSTEM_PROMPT_TEMPLATE.format(
-        agent_name=agent_name or "DeerFlow 2.0",
+        agent_name=agent_name or "天X数字员工",
         soul=get_agent_soul(agent_name, user_id=user_id),
         self_update_section=_build_self_update_section(agent_name),
         skills_section=skills_section,

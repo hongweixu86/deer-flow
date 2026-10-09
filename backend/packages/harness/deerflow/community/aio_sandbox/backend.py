@@ -46,7 +46,7 @@ def sandbox_http_trust_env(sandbox_url: str) -> bool:
 # enforce before destroying a sandbox that never became ready. Tests that
 # validate the shipped image must use this same budget: a longer one can
 # pass while every real acquisition still fails.
-SANDBOX_LOCAL_PROVIDER_READY_TIMEOUT = 60
+SANDBOX_LOCAL_PROVIDER_READY_TIMEOUT = 180
 
 
 def wait_for_sandbox_ready(
