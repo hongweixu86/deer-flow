@@ -1,0 +1,8 @@
+deerflow_email,action,password,system_role,needs_setup,oauth_provider,oauth_id,feishu_open_id,feishu_chat_id,feishu_user_name,feishu_bot_open_id,scopes
+yezhiying@163.com,bind_only,,,,,,ou_abc12345def67890,oc_chat001aaa111bbb222,叶知英,ou_bot_devops00fee1,"[""im:message"",""im:message:send_as_bot""]"
+yezhiying@163.com,bind_only,,,,,,ou_abc12345def67890,oc_chat002ccc333ddd444,叶知英,ou_bot_devops00fee1,"[""im:message""]"
+opsuser1@deerflow.example,upsert_all,InitialPass!2026,user,false,,,,,,,,
+opsuser1@deerflow.example,bind_only,,,,,,ou_def67890abc12345,oc_chat003eee555fff666,王运维,ou_bot_devops00fee1,"[""im:message""]"
+opsuser2@deerflow.example,upsert_all,,user,true,,,ou_9999aaaa8888bbbb,oc_chat001aaa111bbb222,张运维,ou_bot_devops00fee1,"[""im:message""]"
+admin1@deerflow.example,upsert_all,AdminInit#9000,admin,false,github,gh_007,ou_admin00bbbbcccc,oc_chat004aaa777bbb888,运维负责人,ou_bot_devops00fee1,"[""im:message""]"
+newby@deerflow.example,create_user,,,,,,,,,

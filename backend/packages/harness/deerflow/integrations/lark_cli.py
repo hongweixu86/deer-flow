@@ -104,9 +104,16 @@ LARK_CLI_DOWNLOAD_TIMEOUT_SECONDS = 60
 LARK_CLI_NPM_INSTALL_TIMEOUT_SECONDS = 180
 LARK_HTTP_TIMEOUT_SECONDS = 20
 LARK_CONFIG_POLL_TIMEOUT_SECONDS = 45
-LARK_AUTH_COMPLETE_DEFAULT_WAIT_SECONDS = 45
+# OAuth Device Flow is human-in-the-loop: the user must open a verification
+# URL, click Authorize, and (for long scope lists) confirm again. 45s is
+# not enough for slow networks, large scope lists, or distracted users,
+# and the wrapper used to SIGKILL lark-cli on every auto-poll — burning
+# the device_code to Lark's replay protection. The default now gives
+# 120s per call; the ceiling is 180s (still well inside the 600s
+# device_code validity Lark itself enforces).
+LARK_AUTH_COMPLETE_DEFAULT_WAIT_SECONDS = 120
 LARK_AUTH_COMPLETE_MIN_WAIT_SECONDS = 5
-LARK_AUTH_COMPLETE_MAX_WAIT_SECONDS = 45
+LARK_AUTH_COMPLETE_MAX_WAIT_SECONDS = 180
 LARK_CLI_LATEST_VERSION_TTL_SECONDS = 3600
 LARK_CLI_MAX_ARCHIVE_BYTES = 128 * 1024 * 1024
 LARK_CLI_MAX_EXTRACTED_BYTES = 256 * 1024 * 1024
@@ -179,6 +186,24 @@ _LARK_CREDENTIAL_LOCKS_GUARD = threading.Lock()
 _LARK_CREDENTIAL_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
 _LARK_HARDENING_LOCKS_GUARD = threading.Lock()
 _LARK_HARDENING_LOCKS: WeakValueDictionary[str, threading.RLock] = WeakValueDictionary()
+
+
+# lark-cli ``identities.user.status`` values that unambiguously mean "the
+# user is NOT authorized", regardless of ``available`` or ``verified``.
+# Everything else (``ok`` / ``ready`` / ``needs_refresh`` / ``unknown`` /
+# future values) is treated as authorized provided ``available`` is true.
+# Deny-list instead of allow-list because lark-cli's status vocabulary
+# keeps growing: v0.x emitted ``ok``, v1.0+ emits ``ready`` and
+# ``needs_refresh`` for live-verified sessions, and we should not chase
+# the wrapper for every new lark-cli release.
+_LARK_USER_NOT_AUTHORIZED_STATUSES: frozenset[str] = frozenset(
+    {
+        "missing",
+        "expired",
+        "revoked",
+        "invalid",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -304,6 +329,123 @@ def lark_cli_data_dir(user_id: str) -> Path:
 
 def _lark_cli_credential_root(user_id: str) -> Path:
     return get_paths().user_dir(user_id) / "integrations" / INTEGRATION_ID
+
+
+# ---------------------------------------------------------------------------
+# Debug instrumentation
+# ---------------------------------------------------------------------------
+# lark-cli reports business failures (invalid / expired device_code, scope
+# rejection, etc.) with exit code 0 and a JSON envelope
+# ``{"ok": false, "error": {...}}``. Without explicit handling the upper
+# layer silently treats the call as success, the user-token file is never
+# written, and the status endpoint keeps reporting "user identity missing"
+# with no actionable error. ``_append_lark_cli_debug`` writes a redacted
+# record of every lark-cli invocation to the user bucket so the next
+# investigation has the verbatim stdout / stderr instead of the translated
+# "user is not authorized" message.
+_LARK_CLI_DEBUG_LOG_NAME = ".lark-cli-debug.log"
+# Match ``device_code=...``, ``access-token: ...`` or ``"refresh_token": "..."``
+# but NOT natural-language prose like "device_code is invalid". False
+# negatives (missed redactions) are acceptable because the log is per-user
+# (0700 root) and only the file owner can inspect it; false positives would
+# destroy the log's readability, which is the whole point of the feature.
+_LARK_CLI_DEBUG_REDACT_RE = re.compile(
+    r"(?P<secret>device[-_]?code|access[-_]?token|refresh[-_]?token)"
+    r"(?P<sep>[=:]+)"
+    r"(?P<value>\S+)",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str | None) -> str | None:
+    """Mask device_code / access_token / refresh_token values in any text
+    payload we are about to persist. Best-effort: the log is per-user
+    (0700 root) and only the file owner can inspect it; the redact is a
+    defense-in-depth measure, not the security boundary.
+    """
+    if not text:
+        return text
+    return _LARK_CLI_DEBUG_REDACT_RE.sub(r"\g<secret>\g<sep><redacted>", text)
+
+
+def _append_lark_cli_debug(
+    user_id: str,
+    args: list[str],
+    result: subprocess.CompletedProcess | None,
+    *,
+    error: str | None = None,
+) -> None:
+    """Append one lark-cli call record to ``.lark-cli-debug.log`` in the
+    user bucket. Best-effort: a write failure must never break the auth
+    path. ``error`` is for ``TimeoutExpired`` and similar pre-exec errors.
+    """
+    try:
+        root = _lark_cli_credential_root(user_id)
+        root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = root / _LARK_CLI_DEBUG_LOG_NAME
+        redacted_args = _redact_argv(args)
+        record = {
+            "ts": datetime.now(UTC).isoformat(timespec="seconds"),
+            "args": redacted_args,
+            "returncode": getattr(result, "returncode", None),
+            "stdout": _redact_secrets((result.stdout or "").strip()) if result is not None else None,
+            "stderr": _redact_secrets((result.stderr or "").strip()) if result is not None else None,
+            "error": error,
+        }
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        path.chmod(0o600)
+    except OSError:
+        # Debug logging must never break the auth path.
+        pass
+
+
+# Flags whose next argv element (or ``=`` / ``:``-suffixed value) is a
+# secret. Keep this list narrow: false positives destroy debug log
+# readability, false negatives are bounded because the log is 0700 root
+# and only the file owner can read it.
+_LARK_CLI_SECRET_FLAGS = (
+    "--device-code",
+    "--device_code",
+    "--access-token",
+    "--access_token",
+    "--refresh-token",
+    "--refresh_token",
+)
+_LARK_CLI_SECRET_FLAG_EQ_RE = re.compile(
+    r"^(?P<flag>--device[-_]code|--access[-_]token|--refresh[-_]token)"
+    r"(?P<sep>[=:]+)"
+    r"(?P<value>\S+)$",
+    re.IGNORECASE,
+)
+
+
+def _redact_argv(args: list[str]) -> list[str]:
+    """Mask secret values in argv. Handles two cases:
+
+    1. ``--flag value`` (whitespace-separated): drop the value.
+    2. ``--flag=value`` (delimiter-separated): mask the value.
+
+    Other args pass through ``_redact_secrets`` so structured text
+    containing ``key=value`` pairs is also scrubbed.
+    """
+    out: list[str] = []
+    skip_next = False
+    for a in args:
+        if skip_next:
+            out.append("<redacted>")
+            skip_next = False
+            continue
+        m = _LARK_CLI_SECRET_FLAG_EQ_RE.match(a)
+        if m:
+            out.append(f"{m.group('flag')}{m.group('sep')}<redacted>")
+            continue
+        if a in _LARK_CLI_SECRET_FLAGS:
+            out.append(a)
+            skip_next = True
+            continue
+        out.append(_redact_secrets(a) or a)
+    return out
 
 
 def ensure_lark_cli_credential_tree(user_id: str, *, paths: Paths | None = None) -> None:
@@ -1601,6 +1743,38 @@ def probe_lark_auth(user_id: str, *, verify: bool = False) -> LarkAuthProbe:
         message = _auth_error_message(data) if data else raw
         return LarkAuthProbe(status="not_authorized", message=message or "Lark user authorization is not configured")
 
+    # Even when lark-cli exits 0, ``identities.user.status`` can be
+    # "missing" / "expired" / "revoked" / etc. — meaning the user is not
+    # actually authorized even though the local config is intact. Without
+    # this guard, ``probe_lark_auth`` reports "authenticated" while the
+    # upper layer keeps telling the user "user identity missing".
+    #
+    # Accept any status not in ``_LARK_USER_NOT_AUTHORIZED_STATUSES`` so
+    # we do not regress every time lark-cli renames its success state
+    # (v0.x "ok" → v1.0+ "ready" / "needs_refresh"). A None status is
+    # treated as authorized here only when ``available`` is explicitly
+    # true — otherwise the user-info payload is unparseable and the
+    # caller should re-try.
+    user_status: str | None = None
+    user_status_message: str | None = None
+    user_available: bool | None = None
+    if data and isinstance(data.get("identities"), dict):
+        _user_info = data["identities"].get("user")
+        if isinstance(_user_info, dict):
+            _raw_status = _user_info.get("status")
+            if isinstance(_raw_status, str) and _raw_status.strip():
+                user_status = _raw_status.strip().lower()
+            if "available" in _user_info and isinstance(_user_info["available"], bool):
+                user_available = _user_info["available"]
+            if user_status in _LARK_USER_NOT_AUTHORIZED_STATUSES or user_available is False:
+                _raw_msg = _user_info.get("message")
+                if isinstance(_raw_msg, str) and _raw_msg.strip():
+                    user_status_message = _raw_msg.strip()
+                elif user_status in _LARK_USER_NOT_AUTHORIZED_STATUSES:
+                    user_status_message = f"Lark user identity is {user_status}"
+                else:
+                    user_status_message = "Lark user identity is unavailable"
+
     user = None
     if data:
         identities = data.get("identities")
@@ -1610,6 +1784,17 @@ def probe_lark_auth(user_id: str, *, verify: bool = False) -> LarkAuthProbe:
                 user = str(user_info.get("userName") or user_info.get("openId") or "") or None
         if user is None and data.get("userName"):
             user = str(data["userName"])
+    if user_status_message:
+        # ``identities.user.status`` is the lark-cli ground truth. When it
+        # is in the not-authorized set (or ``available`` is false), surface
+        # that to the upper layer as ``not_authorized`` regardless of exit
+        # code, so the UI's status and the lark-cli status stay in
+        # lockstep.
+        return LarkAuthProbe(
+            status="not_authorized",
+            user=user,
+            message=user_status_message,
+        )
     if verify:
         return LarkAuthProbe(
             status="authenticated",
@@ -2134,6 +2319,11 @@ def complete_lark_auth(
             user_id=user_id,
             timeout=wait_timeout_seconds,
             allow_empty_success=True,
+            # Human-in-the-loop Device Flow: the frontend auto-polls with
+            # a short ``wait_timeout_seconds`` and expects the wrapper to
+            # give lark-cli a chance to flush in-flight token writes on
+            # timeout (SIGTERM + 5s grace) rather than SIGKILL it.
+            blocking=True,
         )
         status = get_lark_integration_status(user_id, config, verify_auth=True)
     return LarkAuthCompleteResult(
@@ -2474,24 +2664,84 @@ def _run_lark_cli_json(
     user_id: str,
     timeout: int,
     allow_empty_success: bool = False,
+    blocking: bool = False,
 ) -> dict[str, Any]:
+    """Run lark-cli and parse its JSON output.
+
+    When ``blocking=True`` (use for human-in-the-loop commands such as
+    ``auth login --device-code``), the subprocess is spawned via
+    ``Popen`` and given a chance to flush in-flight writes on timeout
+    via SIGTERM (5s grace) before SIGKILL. Hard-killing lark-cli
+    mid-poll loses the device-flow state and causes the next retry to
+    surface ``device_code is invalid`` even though the user already
+    authorized. The default ``blocking=False`` preserves the original
+    hard-kill-on-timeout behavior for non-blocking commands (status
+    probes, config init, etc.).
+    """
+    proc: subprocess.Popen | None = None
     try:
-        try:
-            result = subprocess.run(
+        if blocking:
+            proc = subprocess.Popen(
                 args,
-                check=False,
-                capture_output=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=timeout,
                 env=lark_cli_env(user_id),
             )
-        except subprocess.TimeoutExpired as exc:
-            raise TimeoutError("Timed out waiting for Lark/Feishu authorization. Complete authorization in the browser, then try again.") from exc
+            try:
+                stdout, stderr = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                if proc.poll() is None:
+                    # Graceful shutdown: let lark-cli flush in-flight
+                    # token writes before escalating to SIGKILL.
+                    proc.terminate()
+                    try:
+                        stdout, stderr = proc.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        # lark-cli ignored SIGTERM; force-kill it so
+                        # we do not leak a zombie that holds the
+                        # user bucket's data dir.
+                        proc.kill()
+                        stdout, stderr = proc.communicate()
+                else:
+                    if proc.poll() is None:
+                        proc.kill()
+                    stdout, stderr = proc.communicate()
+                _append_lark_cli_debug(user_id, args, None, error=f"timeout after {timeout}s")
+                raise TimeoutError("Timed out waiting for Lark/Feishu authorization. Complete authorization in the browser, then try again.") from None
+            result = subprocess.CompletedProcess(
+                args=args,
+                returncode=proc.returncode,
+                stdout=stdout,
+                stderr=stderr,
+            )
+        else:
+            try:
+                result = subprocess.run(
+                    args,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    env=lark_cli_env(user_id),
+                )
+            except subprocess.TimeoutExpired as exc:
+                _append_lark_cli_debug(user_id, args, None, error=f"timeout after {timeout}s")
+                raise TimeoutError("Timed out waiting for Lark/Feishu authorization. Complete authorization in the browser, then try again.") from exc
     finally:
         # OAuth commands may create new plaintext token files after the
         # pre-command environment guard has run. Re-harden every file even on
         # timeout or CLI failure before returning control to the Gateway.
         ensure_lark_cli_credential_tree(user_id)
+        # Defensive: if any exception path left the subprocess running,
+        # reap it to avoid a zombie that holds the user bucket's data dir.
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.kill()
+                proc.communicate(timeout=1)
+            except Exception:
+                pass
 
     stdout = (result.stdout or "").strip()
     stderr = (result.stderr or "").strip()
@@ -2499,8 +2749,20 @@ def _run_lark_cli_json(
     parsed = _parse_json_object(raw)
 
     if result.returncode != 0:
+        _append_lark_cli_debug(user_id, args, result, error=None)
         message = _auth_error_message(parsed) if parsed else raw
         raise ValueError(message or f"lark-cli exited with code {result.returncode}")
+
+    # lark-cli wraps business failures (invalid / expired device_code, scope
+    # rejection, etc.) in ``{"ok": false, "error": {...}}`` while still
+    # exiting 0. Without this guard the upper layer silently treats the
+    # failure as success, the user-token file is never written, and the
+    # status endpoint keeps reporting "user identity missing" with no
+    # actionable error.
+    if isinstance(parsed, dict) and parsed.get("ok") is False:
+        _append_lark_cli_debug(user_id, args, result, error=None)
+        message = _auth_error_message(parsed) or raw
+        raise ValueError(message or "lark-cli reported a business failure.")
 
     if not raw and allow_empty_success:
         return {}

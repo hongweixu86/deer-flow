@@ -473,6 +473,180 @@ directory is already trusted as secret storage. WeChat QR login auth state
 follows the same local-runtime model and may persist a QR-derived bot token in
 the channel state directory.
 
+## Operations — Bulk-bind Users to Feishu
+
+The browser one-time `connect <code>` flow is the right tool for one-off user
+onboarding.  For teams that already know the mapping between DeerFlow user
+emails and Feishu `open_id`s — or for off-boarding self-bind in environments
+where the one-time code is impractical — there is a one-shot ops script that
+writes the same `users` and `channel_connections` rows directly:
+
+- Script: [`scripts/bulk_bind_feishu.py`](../scripts/bulk_bind_feishu.py)
+- Sample input: [`scripts/bulk_bind_feishu.example.csv`](../scripts/bulk_bind_feishu.example.csv)
+- Tests: [`tests/test_bulk_bind_feishu.py`](../tests/test_bulk_bind_feishu.py)
+
+### Why it bypasses `connect <code>`
+
+Connect codes are a single-user safety rail that gates "anyone holding the
+code can bind" (a property the operator-level bulk path does not need; see
+the connect code security notes below).  When the DeerFlow operator already
+holds the canonical mapping, that rail is friction, not protection.
+`bulk_bind_feishu.py` reuses the same `ChannelConnectionRepository
+.upsert_connection` and the same `SQLiteUserRepository.create_user` /
+`update_user` paths the runtime uses, so the persisted state is byte-for-byte
+the same as a self-bind plus provisioning.
+
+### What it does
+
+For each input row:
+
+1. **User step.** Look up the DeerFlow user by email (case-insensitive,
+   matching `SQLiteUserRepository.get_user_by_email`).  If absent, create
+   one with the row's `password` / `system_role` / `needs_setup` /
+   `oauth_provider` / `oauth_id` fields; if present and `--allow-update`,
+   update only the fields that actually differ.  Passwords go through the
+   same `app.gateway.auth.password.hash_password` (bcrypt v2, SHA-256
+   pre-hash) the registration endpoint uses, so newly created users can log
+   in immediately via the standard login form.
+2. **Bind step.** Call `ChannelConnectionRepository.upsert_connection` with
+   `provider="feishu"`, the row's `feishu_open_id` as `external_account_id`
+   and `feishu_chat_id` as `workspace_id`.  The repository handles the
+   partial unique index `uq_channel_connection_active_identity` for you:
+   it auto-revokes any prior active owner of that `(feishu, open_id,
+   chat_id)` triple and retries under concurrency.  The DB constraint never
+   has to be touched by hand.
+
+One row may carry both steps (`action=upsert_all`, default) or be limited
+to one (`create_user`, `bind_only`).  A `(feishu_open_id, feishu_chat_id)`
+pair appears once per row, so cross-chat bindings come from multiple rows
+for the same user — exactly mirroring `_attach_connection_identity`, which
+keys on `chat_id` (Feishu bindings are workspace-scoped).
+
+### Input format
+
+```csv
+deerflow_email,action,password,system_role,needs_setup,oauth_provider,oauth_id,feishu_open_id,feishu_chat_id,feishu_user_name,feishu_bot_open_id,scopes
+yezhiying@163.com,bind_only,,,,,,ou_abc12345def67890,oc_chat001aaa111bbb222,叶知英,ou_bot_devops00fee1,"[""im:message"",""im:message:send_as_bot""]"
+opsuser1@deerflow.example,upsert_all,InitialPass!2026,user,false,,,,,,,,
+```
+
+See the sample file for a six-row worked example that covers every
+`action` value, password-bearing and passwordless rows, and an SSO-linked
+admin row.
+
+| Column             | Required           | Notes |
+|--------------------|--------------------|-------|
+| `deerflow_email`   | yes                | Looked up case-insensitively; existing users are reused unless `--allow-update` and a field actually differs. |
+| `action`           | default `upsert_all` | `create_user` / `bind_only` / `upsert_all`. |
+| `password`         |                    | Plaintext; hashed via bcrypt v2.  Empty → `password_hash=NULL`, `needs_setup=true`. |
+| `system_role`      | default `user`     | `user` or `admin`. |
+| `needs_setup`      | auto               | Auto-resolves to `true` when no password; explicit `true`/`false` overrides. |
+| `oauth_provider`   |                    | e.g. `github`, `google`. |
+| `oauth_id`         |                    | OAuth subject for the provider. |
+| `feishu_open_id`   | bind only          | Feishu `ou_xxx`. |
+| `feishu_chat_id`   | bind only          | Feishu `oc_xxx`. |
+| `feishu_user_name` | optional           | Display name on the connection row. |
+| `feishu_bot_open_id` | optional         | The bound bot's `ou_xxx`. |
+| `scopes`           | optional           | JSON array or comma-separated; defaults to the standard Feishu send-scopes trio. |
+
+### Common invocations
+
+Run from `backend/`:
+
+```bash
+# 1) Dry-run — print the plan, write nothing
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    scripts/bulk_bind_feishu.example.csv --dry-run
+
+# 2) Use the password column as-is (dev / CI data)
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    scripts/bulk_bind_feishu.example.csv
+
+# 3) Production bulk-import with auto-generated passwords
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    scripts/bulk_bind_feishu.example.csv \
+    --password-source auto \
+    --password-out ./ops_secrets/deerflow_users_$(date +%F).csv
+# ^ clears/creates ./ops_secrets/deerflow_users_<date>.csv with
+#   one row of email,plaintext_per_user.  Treat as a secret and rotate it
+#   out of version control immediately.
+
+# 4) SSO/onboarding — never set a password, force setup on next login
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    scripts/bulk_bind_feishu.example.csv --password-source off
+
+# 5) Refresh an existing user's role / OAuth linkage
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    scripts/bulk_bind_feishu.example.csv --allow-update
+
+# 6) JSONL input (one JSON object per line)
+PYTHONPATH=. python scripts/bulk_bind_feishu.py \
+    ./ops_secrets/bulk_bind.jsonl --json
+```
+
+### Verifying
+
+After the script returns zero:
+
+```sql
+-- 1) The (open_id, chat_id) should resolve to exactly one active row,
+--    owned by the expected DeerFlow user.
+SELECT owner_user_id, status, external_account_name, updated_at
+FROM channel_connections
+WHERE provider='feishu'
+  AND external_account_id='ou_xxx'
+  AND workspace_id='oc_chat_xxx';
+
+-- 2) For passwordless / created users, confirm needs_setup = true
+--    and password_hash IS NULL.
+SELECT id, email, system_role, needs_setup, password_hash IS NULL
+FROM users
+WHERE email='opsuser2@deerflow.example';
+```
+
+Then on the platform side:
+
+- The bound DeerFlow user can fetch `GET /api/channels/feishu/connections`
+  and see the new connection.
+- The bound Feishu user, sending a message in the bound chat, hits
+  `FeishuChannel._attach_connection_identity` and arrives at the manager with
+  a non-null `connection_id` — the Gateway log line `[Feishu] publishing
+  inbound message` should name the bound `connection_id`.  If the
+  log line shows `connection_id=None`, the binding did not actually
+  land and the manager fell through to the synthetic owner.
+
+### Operational guidance
+
+- **Run with `--dry-run` first.**  Re-running a non-dry-run is safe (the
+  bind step is idempotent; `upsert_connection` revokes the prior owner)
+  but the user-update step rewrites fields under `--allow-update`, so
+  dry-run makes any intended update visible before commit.
+- **`--password-source column` is risky in shared/CI environments.**
+  Plaintext passwords committed alongside the CSV are an obvious secret
+  leak.  Prefer `--password-source auto` and rotate the generated
+  `--password-out` file out of version control immediately.
+- **Feishu bindings are workspace-scoped (`feishu_chat_id`).**  A user who
+  needs to talk to the bot in N chats should appear in N rows.  An empty
+  workspace is not a valid Feishu binding — `_attach_connection_identity`
+  always supplies `inbound.chat_id`, so a row without a `feishu_chat_id`
+  will never be reached at runtime; the script records that as
+  `binding.result = skip-missing-fields`.
+- **Concurrency with the live Gateway.**  The script uses the shared
+  `get_session_factory()` that the Gateway also uses.  Restart-free runs
+  are safe (the repository's `IntegrityError` retry covers conflicts with
+  concurrent inbound writers), but pausing the Gateway for the duration
+  of a large bulk run avoids contention on the `users` UNIQUE index.
+- **The script does not unbind.**  Disconnect an existing user before
+  reassigning their Feishu identity if the new owner wants a clean
+  history; `upsert_connection` will still succeed (the previous owner
+  gets auto-revoked), but their thread history remains scoped to the
+  previous owner's bucket until they manually transfer threads.
+- **Other providers.**  The same repository API works for every provider
+  in `CHANNEL_CAPABILITIES` (Telegram, Slack, Discord, DingTalk, WeChat,
+  WeCom, Buzz).  Adding provider-specific bindings is a matter of cloning
+  this script and renaming `feishu_*` columns and the `provider="feishu"`
+  literal — every other line is identical.
+
 ## Security Notes
 
 - Browser APIs remain authenticated and CSRF-protected.

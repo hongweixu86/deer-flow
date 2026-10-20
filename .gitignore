@@ -32,6 +32,7 @@ backend/scripts/benchmark/*.jsonl
 # Configuration files
 config.yaml
 mcp_config.json
+.mcp.json
 extensions_config.json
 
 # IDE

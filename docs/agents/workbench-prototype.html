@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字员工工作台 — 原型</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"PingFang SC"', '"Microsoft YaHei"', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif; }
+    /* 自定义滚动条 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* 员工卡片浮动 */
+    .emp-card { transition: all .15s ease; }
+    .emp-card:hover { transform: translateY(-2px); }
+    .emp-card.selected { box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(59,130,246,.15); }
+
+    /* 表格行 hover */
+    .task-row { transition: background-color .1s ease; }
+    .task-row:hover { background-color: #f8fafc; }
+    .task-row.highlight { background-color: #fef3c7; }
+
+    /* 子任务卡片呼吸 */
+    @keyframes pulse-soft { 0%,100%{opacity:1} 50%{opacity:.6} }
+    .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+    /* 打字点 */
+    @keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-4px);opacity:1} }
+    .typing-dot { animation: typing 1.2s ease-in-out infinite; }
+    .typing-dot:nth-child(2) { animation-delay: .15s; }
+    .typing-dot:nth-child(3) { animation-delay: .3s; }
+
+    /* 消息气泡渐入 */
+    @keyframes msg-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .msg-in { animation: msg-in .25s ease-out; }
+
+    /* 工单 chip */
+    .ticket-chip { background:#dbeafe; color:#1d4ed8; padding:1px 6px; border-radius:4px; font-family:monospace; font-size:12px; cursor:pointer; }
+    .ticket-chip:hover { background:#bfdbfe; }
+  </style>
+</head>
+<body class="bg-slate-100 h-screen overflow-hidden">
+
+<div class="h-screen flex flex-col p-3 gap-3">
+
+  <!-- ==================== 顶部：待办/已办任务区 (20%) ==================== -->
+  <section class="h-[20vh] min-h-[150px] rounded-xl bg-white shadow-sm border border-slate-200 flex flex-col">
+    <!-- 头栏 -->
+    <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+      <div class="flex items-center gap-1">
+        <button id="tab-todo" onclick="switchTodoView('todo')"
+          class="px-3 py-1 text-sm font-medium rounded-md bg-blue-50 text-blue-700">待办 <span class="ml-1 text-xs px-1.5 rounded bg-blue-200">12</span></button>
+        <button id="tab-done" onclick="switchTodoView('done')"
+          class="px-3 py-1 text-sm font-medium rounded-md text-slate-600 hover:bg-slate-50">已办 <span class="ml-1 text-xs px-1.5 rounded bg-slate-200 text-slate-600">47</span></button>
+      </div>
+      <div class="flex items-center gap-2 text-sm text-slate-500">
+        <button class="flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-50">
+          <span>全部系统</span>
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M5 8l5 5 5-5H5z"/></svg>
+        </button>
+        <div class="relative">
+          <input placeholder="搜索任务…" class="pl-7 pr-3 py-1 text-sm border border-slate-200 rounded-md w-48 focus:outline-none focus:border-blue-400">
+          <svg class="w-4 h-4 absolute left-2 top-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <button class="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          新建任务
+        </button>
+      </div>
+    </div>
+
+    <!-- 业务系统 tabs -->
+    <div class="flex items-center gap-1 px-4 pt-2 border-b border-slate-100">
+      <button data-system="OMS2.0系统" onclick="filterSystem('OMS2.0系统')"
+        class="sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-blue-600 text-blue-700">OMS2.0系统 <span class="ml-1 text-xs px-1.5 rounded-full bg-red-100 text-red-600">7</span></button>
+      <button data-system="OMS1.0系统" onclick="filterSystem('OMS1.0系统')"
+        class="sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">OMS1.0系统 <span class="ml-1 text-xs px-1.5 rounded-full bg-orange-100 text-orange-600">3</span></button>
+      <button data-system="总调新能源系统" onclick="filterSystem('总调新能源系统')"
+        class="sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">总调新能源系统 <span class="ml-1 text-xs px-1.5 rounded-full bg-orange-100 text-orange-600">2</span></button>
+      <button data-system="电网管理平台" onclick="filterSystem('电网管理平台')"
+        class="sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">电网管理平台 <span class="ml-1 text-xs px-1.5 rounded-full bg-slate-100 text-slate-500">0</span></button>
+      <button data-system="调度运行监控系统" onclick="filterSystem('调度运行监控系统')"
+        class="sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900">调度运行监控系统 <span class="ml-1 text-xs px-1.5 rounded-full bg-slate-100 text-slate-500">0</span></button>
+    </div>
+
+    <!-- 任务表格 -->
+    <div class="flex-1 overflow-y-auto">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-slate-50 text-xs text-slate-500 uppercase">
+          <tr>
+            <th class="px-4 py-2 text-left font-medium w-10">#</th>
+            <th class="px-2 py-2 text-left font-medium">标题</th>
+            <th class="px-2 py-2 text-left font-medium w-24">系统</th>
+            <th class="px-2 py-2 text-left font-medium w-16">优先级</th>
+            <th class="px-2 py-2 text-left font-medium w-20">状态</th>
+            <th class="px-2 py-2 text-left font-medium w-32">处理员工</th>
+            <th class="px-2 py-2 text-left font-medium w-16">时间</th>
+          </tr>
+        </thead>
+        <tbody id="task-table" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ==================== 中部：数字员工画廊 (25%) ==================== -->
+  <section class="h-[25vh] min-h-[180px] rounded-xl bg-white shadow-sm border border-slate-200 flex flex-col">
+    <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-slate-900">数字员工团队</h2>
+        <span class="text-xs text-slate-400">6 位员工 · 5 位在线</span>
+      </div>
+      <button class="flex items-center gap-1 px-2 py-1 text-sm text-slate-500 hover:bg-slate-50 rounded">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        刷新
+      </button>
+    </div>
+    <div class="flex-1 overflow-x-auto overflow-y-hidden">
+      <div id="employee-gallery" class="flex items-stretch gap-4 p-4 h-full"></div>
+    </div>
+  </section>
+
+  <!-- ==================== 底部：对话框 (55%) ==================== -->
+  <section class="flex-1 min-h-[320px] rounded-xl bg-white shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+    <!-- 会话头 -->
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
+      <div class="flex items-center gap-3">
+        <div id="chat-avatar" class="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-xl">🛢️</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-slate-900">与 <span id="chat-name">数字员工</span> 对话</h3>
+            <span id="chat-status" class="flex items-center gap-1 text-xs text-green-600">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>在线
+            </span>
+          </div>
+          <div id="chat-role" class="text-xs text-slate-500">系统管理员 · 系统运行保障</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button class="flex items-center gap-1 px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 rounded">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          会话历史
+        </button>
+        <button class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 消息流 -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30"></div>
+
+    <!-- 输入栏 -->
+    <div class="border-t border-slate-100 px-4 py-3 bg-white">
+      <div class="flex items-end gap-2 mb-2">
+        <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded" title="附件">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        </button>
+        <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded" title="图片">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </button>
+        <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded" title="语音">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-14 0m14 0a7 7 0 00-14 0m14 0v1a7 7 0 01-14 0v-1m14 0H5"/></svg>
+        </button>
+        <div class="flex-1 relative">
+          <textarea id="chat-input" rows="1" placeholder="输入消息… (Shift+Enter 换行)"
+            class="w-full px-3 py-2 pr-12 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 resize-none"></textarea>
+          <button onclick="sendMessage()" class="absolute right-2 bottom-1.5 p-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-slate-300" title="发送">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="suggestion-chips" class="flex flex-wrap gap-1.5"></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ==================== 演示数据 ====================
+const EMPLOYEES = [
+  { id:'super',   display_name:'总管家',     avatar:'🌟', role:'super',      status:'online', todo_count:12,
+    description:'智能调度', expertise:'所有业务问题，不知道找谁就找我', suggestion:['我的订单卡住了','查询很慢','系统报错'] },
+  { id:'oncall',  display_name:'值班员',     avatar:'🛡️', role:'specialist', status:'online', todo_count:5,
+    description:'虚拟运行值班员 · 7×24 接收告警', expertise:'告警诊断 · 工单升级 · 风险评估', suggestion:['服务报错了','集群异常','需要升级'] },
+  { id:'dba',     display_name:'系统管理员',       avatar:'🛠️', role:'specialist', status:'online', todo_count:8,
+    description:'虚拟系统管理员 · 系统运行保障', expertise:'系统功能咨询 · 系统日志排查 · 系统运维报告', suggestion:['系统功能咨询','系统日志异常','系统运维周报'] },
+  { id:'sre',     display_name:'并网管理员',       avatar:'⚡', role:'specialist', status:'online', todo_count:3,
+    description:'虚拟并网管理员 · 并网管理相关辅助', expertise:'并网校核 · 并网辅助审批 · 并网政策咨询', suggestion:['并网校核进度','并网辅助审批','并网政策咨询'] },
+  { id:'cs',      display_name:'客服专员',   avatar:'🎧', role:'specialist', status:'busy',   todo_count:11,
+    description:'客服话术与升级', expertise:'工单回复 · 客户安抚 · SLA 跟进', suggestion:['工单模板','客户投诉','SLA 延期'] },
+  { id:'finance', display_name:'财务专员',   avatar:'📊', role:'specialist', status:'online', todo_count:2,
+    description:'对账与发票', expertise:'对账差异 · 发票冲红 · 应收应付', suggestion:['对账不平','发票问题','应收逾期'] },
+  { id:'mkt',     display_name:'营销专员',   avatar:'📣', role:'specialist', status:'offline', todo_count:0,
+    description:'活动 ROI 与优惠券', expertise:'活动分析 · 优惠券策略 · ROI 监控', suggestion:['优惠券失效','ROI 异常','活动复盘'] },
+];
+
+// 系统 → 推荐员工映射（点击任务行 → 跳到对应员工对话）
+// 注：id 是内部 key；显示名取 EMPLOYEES[id].display_name
+const SYSTEM_MAP = {
+  '订单系统': 'dba',     // 系统管理员 处理订单管理系统问题
+  '库存系统': 'oncall',  // 库存系统 ≠ 并网管理，改走值班员兜底
+  '客服系统': 'cs',
+  '财务系统': 'finance',
+  '营销系统': 'mkt',
+};
+
+const TASKS_TODO = [
+  { id:'T-001', title:'订单管理系统响应延迟告警',       system:'订单系统', priority:'P1', status:'处理中', assignee:'dba',     time:'2 分钟前' },
+  { id:'T-002', title:'订单服务 JVM OOM 预警',          system:'订单系统', priority:'P1', status:'处理中', assignee:'dba',     time:'8 分钟前' },
+  { id:'T-003', title:'订单退款审核队列堆积',           system:'订单系统', priority:'P2', status:'待分配', assignee:null,      time:'15 分钟前' },
+  { id:'T-004', title:'SKU-1234 缺货预警',              system:'库存系统', priority:'P1', status:'处理中', assignee:'oncall',  time:'23 分钟前' },
+  { id:'T-005', title:'仓库 A 货架容量异常',            system:'库存系统', priority:'P2', status:'已转交', assignee:'oncall',  time:'1 小时前' },
+  { id:'T-006', title:'调拨单 #TF-3320 未生成',         system:'库存系统', priority:'P3', status:'待分配', assignee:null,      time:'2 小时前' },
+  { id:'T-007', title:'客户工单 #CT-9912 升级处理',     system:'客服系统', priority:'P0', status:'已升级', assignee:'cs',      time:'32 分钟前' },
+  { id:'T-008', title:'自动回复策略与新规则冲突',       system:'客服系统', priority:'P2', status:'处理中', assignee:'cs',      time:'1 小时前' },
+];
+
+const TASKS_DONE = [
+  { id:'T-100', title:'订单管理系统连接池扩容',         system:'订单系统', priority:'P1', status:'已完成', assignee:'dba',     time:'今晨 06:12' },
+  { id:'T-101', title:'仓库 WMS 库存同步异常修复',      system:'库存系统', priority:'P2', status:'已完成', assignee:'oncall',  time:'今晨 05:30' },
+  { id:'T-102', title:'工单 #CT-9880 客户回访',         system:'客服系统', priority:'P3', status:'已完成', assignee:'cs',      time:'今晨 04:00' },
+  { id:'T-103', title:'月度对账差异 ¥12,400 已平账',    system:'财务系统', priority:'P2', status:'已完成', assignee:'finance', time:'昨日 22:15' },
+  { id:'T-104', title:'大促活动 ROI 报告已生成',        system:'营销系统', priority:'P3', status:'已完成', assignee:'mkt',     time:'昨日 18:40' },
+  { id:'T-105', title:'并网校核节点审批通过',           system:'订单系统', priority:'P1', status:'已完成', assignee:'sre',     time:'昨日 16:22' },
+];
+
+// 每位员工的预置对话
+const CONVERSATIONS = {
+  super: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是总管家。可以告诉我您遇到的问题，我会判断由哪位专员处理最合适。' },
+  ],
+  oncall: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是虚拟运行值班员，7×24 接收告警与求助。请描述您遇到的服务问题。' },
+    { role:'user', text:'我们订单服务的响应时间突然从 200ms 涨到了 3s' },
+    { role:'assistant', avatar:'', name:'', text:'我先做初步诊断…', subtask:{ title:'检查订单服务最近 1h 慢调用', status:'已完成', duration:'2.3s', result:'发现 3 个慢调用，平均 1.8s' } },
+    { role:'assistant', avatar:'', name:'', text:'已定位到根因：连接池在 09:12 被打满。这个属于系统管理员的范畴，已创建工单 <span class="ticket-chip" onclick="filterSystem(\'订单系统\')">#WO-3321</span> 转交系统管理员评估。' },
+  ],
+  dba: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是系统管理员数字员工，负责系统运行保障、系统功能咨询、系统日志排查和系统运维报告等事项。' },
+    { role:'user', text:'今晨订单管理系统响应变慢，帮我看下系统日志' },
+    { role:'assistant', avatar:'', name:'', text:'我来查一下系统运行日志…', typing:true },
+    { role:'assistant', avatar:'', name:'', text:'', subtask:{ title:'查询订单管理系统最近 1h 运行日志', status:'已完成', duration:'1.8s', result:'发现 3 条 ERROR：连接池满 + 2 次 OOM kill' } },
+    { role:'assistant', avatar:'', name:'', text:'已定位：连接池在 09:12 被打满，伴随 2 次 JVM OOM kill。建议先扩容连接池上限到 200，并启用内存溢出自动 dump。' },
+    { role:'user', text:'那直接加上？' },
+    { role:'assistant', avatar:'', name:'', text:'这个属于写操作变更，已转交值班员评估风险后由并网管理员审批执行。工单 <span class="ticket-chip" onclick="filterSystem(\'订单系统\')">#WO-3321</span> 已创建。' },
+  ],
+  sre: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是并网管理员数字员工。并网校核、并网辅助审批、并网政策咨询都可以找我。' },
+    { role:'user', text:'XX 风电场并网校核进度到哪了？' },
+    { role:'assistant', avatar:'', name:'', text:'我来查一下…', typing:true },
+    { role:'assistant', avatar:'', name:'', text:'', subtask:{ title:'查询 XX 风电场并网校核工单', status:'已完成', duration:'1.2s', result:'工单 #GN-2026-0415 当前状态：电气一次校核已完成，等待并网协议会签' } },
+    { role:'assistant', avatar:'', name:'', text:'已查到：电气一次校核已完成（10/12），现在卡在"并网协议会签"环节，按并网政策需要先由你方盖章。预计 1 个工作日内可走完。' },
+  ],
+  cs: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是客服数字员工。当前较忙（手上有 11 单），回复可能略有延迟。' },
+  ],
+  finance: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是财务数字员工。对账差异、发票冲红、应收应付都可以问我。' },
+  ],
+  mkt: [
+    { role:'assistant', avatar:'', name:'', text:'您好，我是营销数字员工。当前离线，留言后我会尽快回复。' },
+  ],
+};
+
+// ==================== 状态 ====================
+let currentView = 'todo';
+let currentSystem = '订单系统';
+let currentEmployee = 'dba';
+
+// ==================== 渲染：任务表 ====================
+function renderTasks() {
+  const list = currentView === 'todo' ? TASKS_TODO : TASKS_DONE;
+  const filtered = currentSystem === 'all' ? list : list.filter(t => t.system === currentSystem);
+  const tbody = document.getElementById('task-table');
+  tbody.innerHTML = '';
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-sm text-slate-400">🎉 ${currentView === 'todo' ? '本系统暂无待办' : '本系统暂无已办'}</td></tr>`;
+    return;
+  }
+  filtered.forEach((t, idx) => {
+    const assigneeEmp = EMPLOYEES.find(e => e.id === t.assignee);
+    const tr = document.createElement('tr');
+    tr.className = 'task-row cursor-pointer';
+    tr.dataset.system = t.system;
+    tr.onclick = () => onTaskClick(t);
+    tr.innerHTML = `
+      <td class="px-4 py-2 text-slate-400">${String(idx+1).padStart(2,'0')}</td>
+      <td class="px-2 py-2 font-medium text-slate-900">${t.title}</td>
+      <td class="px-2 py-2"><span class="sys-badge">${t.system}</span></td>
+      <td class="px-2 py-2">${priorityBadge(t.priority)}</td>
+      <td class="px-2 py-2">${statusBadge(t.status)}</td>
+      <td class="px-2 py-2">${assigneeEmp ? assigneeCell(assigneeEmp) : '<span class="text-slate-400 text-xs">— 待分配</span>'}</td>
+      <td class="px-2 py-2 text-xs text-slate-500">${t.time}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function priorityBadge(p) {
+  const map = { P0:['red','P0'], P1:['orange','P1'], P2:['yellow','P2'], P3:['gray','P3'] };
+  const [c, label] = map[p];
+  const dotMap = { red:'#dc2626', orange:'#ea580c', yellow:'#ca8a04', gray:'#9ca3af' };
+  return `<span class="inline-flex items-center gap-1 text-xs font-medium text-${c}-700"><span class="w-1.5 h-1.5 rounded-full" style="background:${dotMap[c]}"></span>${label}</span>`;
+}
+
+function statusBadge(s) {
+  const map = {
+    '处理中':['blue','bg-blue-50 text-blue-700'],
+    '待分配':['gray','bg-slate-100 text-slate-600'],
+    '已转交':['purple','bg-purple-50 text-purple-700'],
+    '已升级':['red','bg-red-50 text-red-700'],
+    '已完成':['green','bg-green-50 text-green-700'],
+  };
+  return `<span class="inline-block px-1.5 py-0.5 text-xs rounded ${map[s][1]}">${s}</span>`;
+}
+
+function assigneeCell(emp) {
+  return `<div class="flex items-center gap-1.5"><span class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-xs">${emp.avatar}</span><span class="text-xs text-slate-700">${emp.display_name}</span></div>`;
+}
+
+// ==================== 渲染：员工画廊 ====================
+function renderEmployees() {
+  const gallery = document.getElementById('employee-gallery');
+  gallery.innerHTML = '';
+  EMPLOYEES.forEach(emp => {
+    const isSelected = emp.id === currentEmployee;
+    const isSuper = emp.role === 'super';
+    const card = document.createElement('div');
+    card.className = `emp-card relative flex-shrink-0 cursor-pointer rounded-xl p-3 border ${isSelected ? 'selected border-blue-400 bg-blue-50/50' : 'border-slate-200 bg-white'} ${isSuper ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-white' : ''}`;
+    card.style.width = isSuper ? '200px' : '180px';
+    card.onclick = () => onEmployeeClick(emp.id);
+    card.innerHTML = `
+      ${isSuper ? `<div class="absolute -top-2 left-3 px-2 py-0.5 bg-amber-500 text-white text-[10px] font-semibold rounded-full">总入口</div>` : ''}
+      ${emp.id !== currentEmployee ? '' : '<div class="absolute -top-2 right-3 px-2 py-0.5 bg-blue-600 text-white text-[10px] font-medium rounded-full">正在对话</div>'}
+      <div class="flex items-center gap-2 mb-2">
+        <div class="relative">
+          <div class="w-10 h-10 rounded-full ${isSuper ? 'bg-amber-100' : 'bg-slate-100'} flex items-center justify-center text-xl">${emp.avatar}</div>
+          <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+            emp.status === 'online' ? 'bg-green-500' : emp.status === 'busy' ? 'bg-orange-500' : 'bg-slate-400'
+          }"></span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm ${isSuper ? 'text-amber-900' : 'text-slate-900'} truncate">${emp.display_name}</div>
+          <div class="text-[11px] text-slate-500 truncate">${emp.description.split('·')[0].trim()}</div>
+        </div>
+      </div>
+      <div class="text-[11px] text-slate-500 leading-relaxed h-8 overflow-hidden">${emp.expertise}</div>
+      <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+        <span class="text-[11px] ${emp.todo_count > 0 ? 'text-orange-600' : 'text-slate-400'}">待办 ${emp.todo_count}</span>
+        <button class="text-[11px] px-2 py-0.5 ${isSelected ? 'bg-blue-600 text-white' : 'border border-slate-300 text-slate-600 hover:border-blue-400 hover:text-blue-600'} rounded">
+          ${isSelected ? '对话中' : '选用'}
+        </button>
+      </div>
+    `;
+    gallery.appendChild(card);
+  });
+}
+
+// ==================== 渲染：聊天 ====================
+function renderChat() {
+  const emp = EMPLOYEES.find(e => e.id === currentEmployee);
+  document.getElementById('chat-avatar').textContent = emp.avatar;
+  document.getElementById('chat-name').textContent = emp.display_name + ' 数字员工';
+  document.getElementById('chat-role').textContent = emp.description + ' · ' + emp.expertise;
+
+  const statusMap = { online:['green-600','green-500','在线'], busy:['orange-600','orange-500','繁忙'], offline:['slate-500','slate-400','离线'] };
+  const [tc, dc, label] = statusMap[emp.status];
+  document.getElementById('chat-status').className = `flex items-center gap-1 text-xs text-${tc}`;
+  document.getElementById('chat-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-${dc}"></span>${label}`;
+
+  // 消息
+  const messages = document.getElementById('chat-messages');
+  messages.innerHTML = '';
+  const conv = CONVERSATIONS[currentEmployee] || [];
+  conv.forEach(m => messages.appendChild(buildMessage(m)));
+  messages.scrollTop = messages.scrollHeight;
+
+  // 建议 chips
+  const chips = document.getElementById('suggestion-chips');
+  chips.innerHTML = '';
+  (emp.suggestion || []).forEach(s => {
+    const btn = document.createElement('button');
+    btn.className = 'px-2.5 py-1 text-xs bg-slate-100 text-slate-700 rounded-full hover:bg-blue-100 hover:text-blue-700';
+    btn.textContent = '💡 ' + s;
+    btn.onclick = () => {
+      document.getElementById('chat-input').value = s;
+      document.getElementById('chat-input').focus();
+    };
+    chips.appendChild(btn);
+  });
+
+  // 输入框禁用态
+  const input = document.getElementById('chat-input');
+  input.disabled = emp.status === 'offline';
+  input.placeholder = emp.status === 'offline' ? `${emp.display_name} 当前离线，留言后会尽快回复…` : '输入消息… (Shift+Enter 换行)';
+}
+
+function buildMessage(m) {
+  // 防御性回退：消息未带 name/avatar 时，用当前员工的 display_name/avatar
+  const emp = EMPLOYEES.find(e => e.id === currentEmployee);
+  const msgAvatar = m.avatar || (emp ? emp.avatar : '');
+  const msgName   = m.name   || (emp ? emp.display_name : '');
+  const wrap = document.createElement('div');
+  wrap.className = 'flex gap-2 msg-in';
+  if (m.role === 'user') {
+    wrap.classList.add('justify-end');
+    wrap.innerHTML = `
+      <div class="max-w-[70%] px-3 py-2 bg-blue-600 text-white text-sm rounded-2xl rounded-tr-sm shadow-sm">
+        ${escape(m.text)}
+      </div>
+      <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm flex-shrink-0">我</div>
+    `;
+  } else {
+    let subtaskHtml = '';
+    if (m.subtask) {
+      const s = m.subtask;
+      const statusColor = s.status === '已完成' ? 'text-green-600' : 'text-blue-600';
+      subtaskHtml = `
+        <div class="mt-2 p-2.5 bg-slate-50 border-l-4 border-blue-400 rounded-r text-xs">
+          <div class="flex items-center gap-1.5 font-medium text-slate-800">🔧 子任务：${s.title}</div>
+          <div class="mt-1 flex items-center gap-3 text-slate-500">
+            <span class="${statusColor}">● ${s.status}</span>
+            <span>用时 ${s.duration}</span>
+          </div>
+          <div class="mt-1 text-slate-600">${s.result}</div>
+        </div>
+      `;
+    }
+    const typingHtml = m.typing ? `
+      <div class="mt-1 inline-flex items-center gap-1 text-slate-400">
+        <span class="typing-dot w-1.5 h-1.5 rounded-full bg-current"></span>
+        <span class="typing-dot w-1.5 h-1.5 rounded-full bg-current"></span>
+        <span class="typing-dot w-1.5 h-1.5 rounded-full bg-current"></span>
+      </div>` : '';
+
+    wrap.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-sm flex-shrink-0">${msgAvatar}</div>
+      <div class="max-w-[70%]">
+        <div class="text-[11px] text-slate-500 mb-1">${msgName} · ${currentTimeStr()}</div>
+        <div class="px-3 py-2 bg-slate-100 text-slate-900 text-sm rounded-2xl rounded-tl-sm">
+          ${m.text || ''}
+          ${typingHtml}
+          ${subtaskHtml}
+        </div>
+      </div>
+    `;
+  }
+  return wrap;
+}
+
+function escape(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function currentTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ==================== 交互 ====================
+function switchTodoView(view) {
+  currentView = view;
+  document.getElementById('tab-todo').className = `px-3 py-1 text-sm font-medium rounded-md ${view === 'todo' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`;
+  document.getElementById('tab-done').className = `px-3 py-1 text-sm font-medium rounded-md ${view === 'done' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`;
+  renderTasks();
+}
+
+function filterSystem(sys) {
+  currentSystem = sys;
+  document.querySelectorAll('.sys-tab').forEach(btn => {
+    const isActive = btn.dataset.system === sys;
+    btn.className = isActive
+      ? 'sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-blue-600 text-blue-700'
+      : 'sys-tab px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-slate-600 hover:text-slate-900';
+  });
+  renderTasks();
+}
+
+function onEmployeeClick(id) {
+  currentEmployee = id;
+  renderEmployees();
+  renderChat();
+}
+
+function onTaskClick(task) {
+  // 高亮该行
+  document.querySelectorAll('.task-row').forEach(r => r.classList.remove('highlight'));
+  event.currentTarget.classList.add('highlight');
+  setTimeout(() => event.currentTarget.classList.remove('highlight'), 1500);
+
+  // 切换到对应员工对话
+  const targetEmp = SYSTEM_MAP[task.system] || 'super';
+  if (currentEmployee !== targetEmp) {
+    currentEmployee = targetEmp;
+    renderEmployees();
+    renderChat();
+  }
+
+  // 滚动到聊天底部
+  setTimeout(() => {
+    const cm = document.getElementById('chat-messages');
+    cm.scrollTop = cm.scrollHeight;
+  }, 100);
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const emp = EMPLOYEES.find(e => e.id === currentEmployee);
+  if (emp.status === 'offline') return;
+
+  const messages = document.getElementById('chat-messages');
+  messages.appendChild(buildMessage({ role:'user', text }));
+  input.value = '';
+  messages.scrollTop = messages.scrollHeight;
+
+  // 模拟员工回复
+  setTimeout(() => {
+    const replies = {
+      super:'好的，我先理解一下问题，再为您分派最合适的专员。',
+      oncall:'收到，我立即开始诊断。请稍候。',
+      dba:'收到，正在调取相关系统日志进行分析…',
+      sre:'收到，正在查询并网校核/审批系统…',
+      cs:'好的，我已记录。请问还需要我做些什么？',
+      finance:'收到，正在核对相关账目。',
+      mkt:'收到，我会尽快处理。',
+    };
+    messages.appendChild(buildMessage({ role:'assistant', avatar:emp.avatar, name:emp.display_name, text:replies[currentEmployee] }));
+    messages.scrollTop = messages.scrollHeight;
+  }, 700);
+}
+
+// ==================== 启动 ====================
+renderTasks();
+renderEmployees();
+renderChat();
+
+// 输入框自动撑高
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Ctrl+Enter 发送
+document.getElementById('chat-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+
+</body>
+</html>

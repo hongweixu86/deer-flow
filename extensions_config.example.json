@@ -74,6 +74,19 @@
         }
       }
     },
+    "sqlite": {
+      "enabled": false,
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "--db-path",
+        "/home/xhw/code/deer-flow/backend/.deer-flow/data/deerflow.db"
+      ],
+      "env": {},
+      "description": "SQLite database access for local deerflow.db"
+    },
     "long-running-reports": {
       "enabled": false,
       "type": "http",

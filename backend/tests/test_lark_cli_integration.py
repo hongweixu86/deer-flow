@@ -2238,8 +2238,11 @@ def test_complete_lark_auth_polls_device_code_and_returns_status(monkeypatch, tm
     ]
     assert captured["kwargs"] == {
         "user_id": "alice",
-        "timeout": 45,
+        "timeout": lark_cli.LARK_AUTH_COMPLETE_DEFAULT_WAIT_SECONDS,
         "allow_empty_success": True,
+        # Human-in-the-loop Device Flow: blocking=True gives lark-cli a
+        # graceful SIGTERM on wrapper timeout (instead of SIGKILL).
+        "blocking": True,
     }
 
 
@@ -2372,8 +2375,10 @@ def test_auth_complete_request_bounds_poll_timeout() -> None:
     assert model.wait_timeout_seconds == 8
     with pytest.raises(ValueError):
         integrations_router.LarkAuthCompleteRequest(device_code="device-code", generation="flow-generation", wait_timeout_seconds=4)
+    # Above the bumped MAX (180s) — the ceiling exists so a single HTTP
+    # call cannot block past the device_code validity Lark itself enforces.
     with pytest.raises(ValueError):
-        integrations_router.LarkAuthCompleteRequest(device_code="device-code", generation="flow-generation", wait_timeout_seconds=46)
+        integrations_router.LarkAuthCompleteRequest(device_code="device-code", generation="flow-generation", wait_timeout_seconds=lark_cli.LARK_AUTH_COMPLETE_MAX_WAIT_SECONDS + 1)
 
 
 def test_start_lark_config_returns_app_registration_url(monkeypatch, tmp_path):
@@ -2918,7 +2923,7 @@ def test_lark_auth_complete_route_polls_device_code(monkeypatch, tmp_path):
     assert captured_kwargs == {
         "device_code": "device-code",
         "generation": "auth-generation",
-        "wait_timeout_seconds": 45,
+        "wait_timeout_seconds": lark_cli.LARK_AUTH_COMPLETE_DEFAULT_WAIT_SECONDS,
     }
 
 
