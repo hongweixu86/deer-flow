@@ -90,6 +90,7 @@ messages:
       - longTermBackground: Unchanging foundational facts about the user
 
       **Multilingual Content**:
+      - Write all authored memory text in Chinese, regardless of the language used in the conversation. This applies to every summary prose block (user and history sections), every newFacts content, every factsToConsolidate consolidated content, and every reason field.
       - Preserve original language for proper nouns and company names
       - Keep technical terms in their original form (DeepSeek, LangGraph, etc.)
       - Note language capabilities in personalContext

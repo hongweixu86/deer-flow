@@ -19,6 +19,7 @@ template: |-
 
   Rules:
   - The consolidated fact must preserve ALL key details from source facts
+  - Write the consolidated content in Chinese, matching the memory content language rule in memory_update
   - Only consolidate facts that describe the same aspect of the user
   - Classify every consolidated fact. It is eligible only when it is user-scoped, durable, descriptive, and safe to inject into unrelated future threads.
   - Confidence of consolidated fact = max of source confidences

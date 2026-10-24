@@ -178,6 +178,18 @@ Custom prompt directories must include the same classification fields.
 Old templates cause extraction writes to fail closed.
 The rejection counter and high-rejection warning expose this condition.
 
+Authored memory text is written in Chinese.
+The rule covers every summary prose block, every new fact, every consolidated
+fact, and every reason field.
+Proper nouns, company names, and technical terms keep their original form.
+`memory_update` carries the rule; `consolidation` carries it again because
+consolidation authors a brand-new persisted fact.
+Tool mode authors fact content directly, so it bypasses the extraction prompt.
+The lead agent's `<memory_tool_system>` guidance carries the same rule.
+The rule applies only to newly extracted content.
+It never rewrites already-stored facts or summaries.
+`staleness_review` stays exempt because it emits audit reasons, not content.
+
 #### Capacity and review
 
 All automatic, manual, tool, and import paths use `deermem/core/eviction.py`.

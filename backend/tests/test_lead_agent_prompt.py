@@ -141,6 +141,20 @@ def test_apply_prompt_template_includes_memory_tool_guidance_only_in_tool_mode(m
     assert "<memory_tool_system>" not in middleware_prompt
 
 
+def test_memory_tool_guidance_requires_chinese_fact_content():
+    # Tool mode lets the model author fact content directly through memory_add,
+    # so the extraction prompt's language rule never reaches it. Without an
+    # explicit rule here, tool-mode facts drift back to the conversation's
+    # language while extraction-mode facts stay Chinese.
+    section = prompt_module._build_memory_tool_section(app_config=SimpleNamespace(memory=SimpleNamespace(enabled=True, mode="tool")))
+
+    assert "<memory_tool_system>" in section
+    assert "in Chinese" in section
+    # The carve-out must survive here too: proper nouns and technical terms
+    # keep their original form rather than being transliterated.
+    assert "original form" in section
+
+
 def test_apply_prompt_template_threads_explicit_app_config_without_global_config(monkeypatch):
     mounts = [SimpleNamespace(container_path="/home/user/shared", read_only=False)]
     explicit_config = SimpleNamespace(

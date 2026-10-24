@@ -106,6 +106,37 @@ def test_load_prompt_messages_returns_system_user() -> None:
     assert "<current_memory>" in messages[1].content
 
 
+def test_memory_write_prompts_require_chinese_memory_content() -> None:
+    # Authored memory text is stored verbatim and re-injected into every future
+    # turn, so its language is a prompt contract, not a style preference: without
+    # an explicit rule the extraction LLM mirrors whatever language the
+    # conversation happened to use. Both authoring prompts must pin it.
+    variables = {
+        "current_memory": "CM",
+        "conversation": "CONV",
+        "correction_hint": "",
+        "staleness_review_section": "",
+        "consolidation_section": "",
+    }
+    system = load_prompt_messages("memory_update", variables)[0].content
+
+    # The requirement itself, scoped to the fields that become memory.
+    assert "Multilingual Content" in system
+    assert "in Chinese" in system
+    for field in ("summary", "newFacts", "factsToConsolidate"):
+        assert field in system
+
+    # The carve-out must survive: proper nouns and technical terms keep their
+    # original form rather than being transliterated into Chinese.
+    assert "original language" in system
+    assert "original form" in system
+
+    # Consolidation authors a brand-new persisted fact, so it needs the same
+    # rule -- otherwise a consolidated fact can slip back to English while the
+    # facts it replaced were Chinese.
+    assert "in Chinese" in load_prompt("consolidation")
+
+
 def test_load_prompt_messages_system_byte_stable_across_vars() -> None:
     # The system message has no variables -> renders byte-identical regardless of
     # the per-call vars (prefix-cache friendly, mirrors lead agent's static system).
